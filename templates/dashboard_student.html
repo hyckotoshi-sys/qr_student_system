@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Student Dashboard</h2>
+
+<div>
+    <p><strong>Name:</strong> {{ student[0] }}</p>
+    <p><strong>School ID:</strong> {{ student[1] }}</p>
+    <p><strong>Email:</strong> {{ student[2] }}</p>
+    <p><strong>Balance:</strong> {{ student[3] }}</p>
+    <h2>Your QR Code</h2>
+<img src="{{ url_for('generate_qr') }}" alt="Student QR Code">
+
+
+
+</div>
+
+<hr>
+
+<h3>Top-Up Balance</h3>
+
+
+    <a href="{{ url_for('topup') }}">Submit Top-Up</a>
+
+</form>
+
+<hr>
+
+<h3>QR Code Actions</h3>
+<button onclick="location.href='/generate_qr'">Generate QR</button>
+<button onclick="location.href='/scan_staff_qr'">Scan QR</button>
+
+<hr>
+
+<h3>History</h3>
+<button onclick="location.href='/student_history'">View Transaction History</button>
+
+
+{% endblock %}

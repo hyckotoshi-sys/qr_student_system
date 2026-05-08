@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Scan QR</title>
+    <script src="https://unpkg.com/html5-qrcode"></script>
+</head>
+<body>
+    <h2>Scan Canteen QR</h2>
+    <div id="reader" style="width:300px"></div>
+
+    <form id="scanForm" action="/scan_qr" method="POST">
+        <input type="hidden" name="student_id" id="student_id">
+        <input type="number" name="amount" placeholder="Amount" required>
+        <button type="submit">Confirm Payment</button>
+    </form>
+
+    <script>
+        function onScanSuccess(decodedText, decodedResult) {
+            document.getElementById("student_id").value = decodedText;
+            alert("QR Code scanned: " + decodedText);
+        }
+
+        const html5QrCode = new Html5Qrcode("reader");
+        html5QrCode.start(
+            { facingMode: "environment" }, 
+            { fps: 10, qrbox: 250 },
+            onScanSuccess
+        );
+    </script>
+</body>
+</html>

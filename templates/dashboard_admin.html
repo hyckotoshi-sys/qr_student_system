@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Admin Dashboard</h2>
+
+<!-- Student List -->
+<h3>Students</h3>
+<table border="1">
+    <tr><th>Name</th><th>School ID</th><th>Email</th><th>Balance</th></tr>
+    {% for s in students %}
+    <tr>
+        <td>{{ s[0] }}</td>
+        <td>{{ s[1] }}</td>
+        <td>{{ s[2] }}</td>
+        <td>{{ s[3] }}</td>
+    </tr>
+    {% endfor %}
+</table>
+
+<!-- Pending Top-Ups -->
+<h3>Pending Top-Ups</h3>
+<table border="1">
+    <tr>
+        <th>ID</th>
+        <th>Student ID</th>
+        <th>Method</th>
+        <th>Amount</th>
+        <th>Screenshot</th>
+        <th>Action</th>
+    </tr>
+    {% for t in topups %}
+    <tr>
+        <td>{{ t[0] }}</td>
+        <td>{{ t[1] }}</td>
+        <td>{{ t[2] }}</td>
+        <td>{{ t[3] }}</td>
+        <td>
+            <img src="{{ t[4] }}" width="100" alt="Screenshot">
+        </td>
+        <td>
+            <!-- Approve Button -->
+            <form method="POST" action="{{ url_for('approve_topup') }}">
+                <input type="hidden" name="topup_id" value="{{ t[0] }}">
+                <button type="submit">Approve</button>
+            </form>
+
+            <!-- Reject Button -->
+            <form method="POST" action="{{ url_for('reject_topup') }}">
+                <input type="hidden" name="topup_id" value="{{ t[0] }}">
+                <button type="submit">Reject</button>
+            </form>
+        </td>
+    </tr>
+    {% endfor %}
+</table>
+{% endblock %}

@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{{ title }}</title>
+</head>
+<body>
+    <nav>
+        <a href="{{ url_for('signin_student') }}">Student Sign In</a> |
+        <a href="{{ url_for('signin_admin') }}">Admin Sign In</a> |
+        <a href="{{ url_for('signin_staff') }}">Staff Sign In</a> |
+        <a href="{{ url_for('signup_student') }}">Student Sign Up</a> |
+        <a href="{{ url_for('signup_admin') }}">Admin Sign Up</a> |
+        <a href="{{ url_for('signup_staff') }}">Staff Sign Up</a>
+    </nav>
+    <hr>
+    {% block content %}{% endblock %}
+</body>
+</html>
+

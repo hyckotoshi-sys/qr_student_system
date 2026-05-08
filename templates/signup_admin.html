@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Admin Sign Up</h2>
+<form method="POST">
+    <label>Full Name:</label><input type="text" name="full_name" required><br><br>
+    <label>Contact Number:</label><input type="text" name="contact_number"><br><br>
+    <label>Email:</label><input type="email" name="email" required><br><br>
+    <label>Password:</label><input type="password" name="password" required><br><br>
+    <button type="submit">Sign Up</button>
+</form>
+{% endblock %}

@@ -1,0 +1,8 @@
+Flask
+flask
+mysql-connector-python
+sendgrid
+qrcode
+gunicorn
+Pillow
+Flask-Mail

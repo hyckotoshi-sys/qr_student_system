@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Student Sign Up</h2>
+<form method="POST">
+    <label>Full Name:</label><input type="text" name="full_name" required><br><br>
+    <label>Student ID No:</label><input type="text" name="school_id" required><br><br>
+    <label>Email:</label><input type="email" name="email" required><br><br>
+    <label>Contact Number:</label><input type="text" name="contact_number"><br><br>
+    <label>Year Level Strand:</label>
+    <select name="strand" required>
+        <option value="STEM">STEM</option>
+        <option value="ABM">ABM</option>
+        <option value="HUMSS">HUMSS</option>
+        <option value="TVL">TVL</option>
+        <option value="GAS">GAS</option>
+    </select><br><br>
+    <label>Guardian Name:</label><input type="text" name="guardian_name"><br><br>
+    <label>Parent Email:</label><input type="email" name="parent_email"><br><br>
+    <label>Password:</label><input type="password" name="password" required><br><br>
+    <label>Confirm Password:</label><input type="password" name="password_confirm" required><br><br>
+    <label>4-digit PIN:</label><input type="text" name="pin" maxlength="4" required><br><br>
+    <button type="submit">Sign Up</button>
+</form>
+{% endblock %}

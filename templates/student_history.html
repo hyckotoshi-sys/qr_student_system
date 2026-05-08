@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Student Transaction History</h2>
+
+<h3>Top-Ups</h3>
+<table border="1">
+    <tr><th>Method</th><th>Amount</th><th>Status</th><th>Date</th></tr>
+    {% for t in topups %}
+    <tr>
+        <td>{{ t[0] }}</td>
+        <td>{{ t[1] }}</td>
+        <td>{{ t[2] }}</td>
+        <td>{{ t[3] }}</td>
+    </tr>
+    {% endfor %}
+</table>
+
+<h3>Purchases</h3>
+<table border="1">
+    <tr><th>Amount</th><th>Status</th><th>Date</th></tr>
+    {% for p in transactions %}
+    <tr>
+        <td>{{ p[0] }}</td>
+        <td>{{ p[1] }}</td>
+        <td>{{ p[2] }}</td>
+    </tr>
+    {% endfor %}
+</table>
+{% endblock %}

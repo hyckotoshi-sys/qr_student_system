@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Canteen Staff Dashboard</title>
+    <script src="https://unpkg.com/html5-qrcode"></script>
+</head>
+<body>
+    <h2>Welcome, Canteen Staff</h2>
+
+    <!-- Scan Student QR -->
+    <h3>Scan Student QR</h3>
+    <div id="reader" style="width:300px"></div>
+    <form id="scanForm" action="/scan_qr" method="POST">
+        <input type="hidden" name="student_id" id="student_id">
+        <input type="number" name="amount" placeholder="Amount" required>
+        <button type="submit">Process Payment</button>
+    </form>
+
+    <script>
+        function onScanSuccess(decodedText, decodedResult) {
+            document.getElementById("student_id").value = decodedText;
+            alert("Student QR scanned: " + decodedText);
+        }
+        const html5QrCode = new Html5Qrcode("reader");
+        html5QrCode.start(
+            { facingMode: "environment" }, 
+            { fps: 10, qrbox: 250 },
+            onScanSuccess
+        );
+    </script>
+
+    <!-- Manual Input for Registered Students -->
+    <h3>Manual Input (Registered Student)</h3>
+    <form action="/staff_transaction" method="POST">
+        <input type="text" name="school_id" placeholder="Enter Student ID" required>
+        <input type="number" name="amount" placeholder="Amount" required>
+        <button type="submit">Process Payment</button>
+    </form>
+
+    <!-- Manual Input for Unregistered Students -->
+    <h3>Manual Input (Unregistered Student)</h3>
+    <form action="/staff_unregistered_transaction" method="POST">
+        <input type="text" name="school_id" placeholder="Enter School ID" required>
+        <input type="number" name="amount" placeholder="Amount Paid" required>
+        <button type="submit">Record Transaction</button>
+    </form>
+
+    <!-- Generate Staff QR -->
+    <h3>Generate Staff QR</h3>
+    <img src="{{ url_for('generate_staff_qr') }}" alt="Staff QR Code">
+
+    <!-- Transaction History -->
+    <h3>Registered Transactions</h3>
+    <table border="1">
+        <tr><th>ID</th><th>Student</th><th>Amount</th><th>Status</th><th>Timestamp</th></tr>
+        {% for txn in registered_txns %}
+        <tr>
+            <td>{{ txn.transaction_id }}</td>
+            <td>{{ txn.student_id }}</td>
+            <td>{{ txn.amount }}</td>
+            <td>{{ txn.status }}</td>
+            <td>{{ txn.timestamp }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+
+    <h3>Unregistered Transactions</h3>
+    <table border="1">
+        <tr><th>ID</th><th>School ID</th><th>Amount</th><th>Timestamp</th></tr>
+        {% for txn in unregistered_txns %}
+        <tr>
+            <td>{{ txn.id }}</td>
+            <td>{{ txn.school_id }}</td>
+            <td>{{ txn.amount }}</td>
+            <td>{{ txn.timestamp }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+</body>
+</html>

@@ -1,0 +1,20 @@
+<!doctype html>
+<html>
+<head><title>Transactions</title></head>
+<body>
+  <h1>Transactions</h1>
+  <table border="1">
+    <tr><th>ID</th><th>Student ID</th><th>Type</th><th>Amount</th><th>Timestamp</th></tr>
+    {% for t in transactions %}
+    <tr>
+      <td>{{ t.transaction_id }}</td>
+      <td>{{ t.student_id }}</td>
+      <td>{{ t.type }}</td>
+      <td>{{ t.amount }}</td>
+      <td>{{ t.timestamp }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  <a href="/dashboard">Back</a>
+</body>
+</html>
