@@ -2,23 +2,53 @@
 {% block content %}
 <h2>Admin Dashboard</h2>
 
-<!-- Student List -->
-<h3>Students</h3>
-<table border="1">
-    <tr><th>Name</th><th>School ID</th><th>Email</th><th>Balance</th></tr>
-    {% for s in students %}
-    <tr>
-        <td>{{ s[0] }}</td>
-        <td>{{ s[1] }}</td>
-        <td>{{ s[2] }}</td>
-        <td>{{ s[3] }}</td>
-    </tr>
-    {% endfor %}
-</table>
+<!-- Overview Row -->
+<div class="overview-row" style="display:flex; gap:20px; margin-bottom:20px;">
+    <div class="box" style="flex:1; background:#eee; padding:10px; text-align:center;">
+        <h4>Total Students</h4>
+        <p>{{ total_students }}</p>
+    </div>
+    <div class="box" style="flex:1; background:#eee; padding:10px; text-align:center;">
+        <h4>Unregistered Students</h4>
+        <p>{{ unregistered }}</p>
+    </div>
+    <div class="box" style="flex:1; background:#eee; padding:10px; text-align:center;">
+        <h4>Top-Ups Today</h4>
+        <p>₱{{ topups_today }}</p>
+    </div>
+    <div class="box" style="flex:1; background:#eee; padding:10px; text-align:center;">
+        <h4>Overall Balance</h4>
+        <p>₱{{ overall_balance }}</p>
+    </div>
+</div>
+
+<!-- Search + Student Panel -->
+<div style="display:flex; gap:40px;">
+    <!-- Left: Search Student -->
+    <div style="flex:1;">
+        <h3>Search Student</h3>
+        <input type="text" id="searchInput" placeholder="Search by name or student ID..." onkeyup="filterStudents()" style="width:100%; padding:8px; margin-bottom:10px;">
+        <ul id="studentList">
+            {% for s in students %}
+            <li onclick="selectStudent('{{ s.full_name }}','{{ s.school_id }}', {{ s.balance }}, {{ s.student_id }})" style="cursor:pointer; margin-bottom:5px;">
+                {{ s.full_name }} ({{ s.school_id }}) — Balance: ₱{{ s.balance }}
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+
+    <!-- Right: Top-Up Panel -->
+    <div style="flex:1; border:1px solid #ccc; padding:15px;">
+        <h3>Top-Up Balance</h3>
+        <div id="studentDetail">
+            <p>Select a student to top up their balance.</p>
+        </div>
+    </div>
+</div>
 
 <!-- Pending Top-Ups -->
-<h3>Pending Top-Ups</h3>
-<table border="1">
+<h3 style="margin-top:30px;">Pending Top-Ups</h3>
+<table border="1" width="100%">
     <tr>
         <th>ID</th>
         <th>Student ID</th>
@@ -27,29 +57,165 @@
         <th>Screenshot</th>
         <th>Action</th>
     </tr>
-    {% for t in topups %}
+    {% for t in pending_topups %}
     <tr>
-        <td>{{ t[0] }}</td>
-        <td>{{ t[1] }}</td>
-        <td>{{ t[2] }}</td>
-        <td>{{ t[3] }}</td>
+        <td>{{ t.topup_id }}</td>
+        <td>{{ t.student_id }}</td>
+        <td>{{ t.method }}</td>
+        <td>₱{{ t.amount }}</td>
+        <td><img src="{{ t.screenshot_path }}" width="100"></td>
         <td>
-            <img src="{{ t[4] }}" width="100" alt="Screenshot">
-        </td>
-        <td>
-            <!-- Approve Button -->
-            <form method="POST" action="{{ url_for('approve_topup') }}">
-                <input type="hidden" name="topup_id" value="{{ t[0] }}">
+            <form method="POST" action="{{ url_for('approve_topup', topup_id=t.topup_id) }}" style="display:inline;">
                 <button type="submit">Approve</button>
             </form>
-
-            <!-- Reject Button -->
-            <form method="POST" action="{{ url_for('reject_topup') }}">
-                <input type="hidden" name="topup_id" value="{{ t[0] }}">
+            <form method="POST" action="{{ url_for('reject_topup', topup_id=t.topup_id) }}" style="display:inline;">
                 <button type="submit">Reject</button>
             </form>
         </td>
     </tr>
     {% endfor %}
 </table>
+
+<!-- Transaction History -->
+<h3 style="margin-top:30px;">Transaction History</h3>
+<table border="1" width="100%">
+    <tr>
+        <th>ID</th>
+        <th>School ID</th>
+        <th>Student Name</th>
+        <th>Type</th>
+        <th>Amount</th>
+        <th>Date</th>
+        <th>Performed By</th>
+        <th>Actions</th>
+    </tr>
+    {% for t in transactions %}
+    <tr id="txn-{{ t.transaction_id }}">
+        <td>{{ t.transaction_id }}</td>
+        <td>{{ t.school_id }}</td>
+        <td>{{ t.student_name }}</td>
+        <td>{{ t.type|capitalize }}</td>
+        <td>₱{{ t.amount }}</td>
+        <td>{{ t.created_at }}</td>
+        <td>{{ t.performed_by }}</td>
+        <td>
+            <button onclick="openEditModal({{ t.transaction_id }}, {{ t.amount }}, {{ t.student_id }})">Edit</button> |
+            <form method="POST" action="{{ url_for('delete_transaction', transaction_id=t.transaction_id) }}" style="display:inline;">
+                <button type="submit">Delete</button>
+            </form>
+        </td>
+    </tr>
+    {% endfor %}
+</table>
+
+<!-- Edit Transaction Modal -->
+<div id="editModal" class="modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5);">
+    <div class="modal-content" style="background:#fff; margin:10% auto; padding:20px; width:400px; border-radius:8px; position:relative;">
+        <span class="close" onclick="closeEditModal()" style="position:absolute; top:10px; right:15px; cursor:pointer;">&times;</span>
+        <h3>Edit Transaction</h3>
+        <form id="editForm">
+            <label>Amount:</label>
+            <input type="number" name="amount" id="editAmount" step="0.01" required>
+            <button type="submit">Save Changes</button>
+        </form>
+    </div>
+</div>
+
+<script>
+let currentTransactionId = null;
+let currentStudentId = null;
+
+function filterStudents() {
+    let input = document.getElementById("searchInput").value.toLowerCase();
+    let list = document.getElementById("studentList").getElementsByTagName("li");
+    for (let i = 0; i < list.length; i++) {
+        let text = list[i].innerText.toLowerCase();
+        list[i].style.display = text.includes(input) ? "" : "none";
+    }
+}
+
+function selectStudent(name, schoolId, balance, studentId) {
+    document.getElementById("studentDetail").innerHTML = `
+        <p><strong>${name}</strong> (${schoolId})</p>
+        <p id="currentBalance">Current Balance: ₱${balance.toFixed(2)}</p>
+        <label>Top-up Amount (₱):</label>
+        <input type="number" id="topupInput" name="amount" step="0.01" required>
+        <div id="balancePreview"></div>
+        <button onclick="submitTopup(${studentId}, ${balance})">Confirm Top-Up</button>
+    `;
+    showBalancePreview(balance, "topupInput", "balancePreview");
+}
+
+function showBalancePreview(currentBalance, inputId, outputId) {
+    const inputField = document.getElementById(inputId);
+    const outputDiv = document.getElementById(outputId);
+
+    inputField.addEventListener("input", function() {
+        let topupAmount = parseFloat(inputField.value) || 0;
+        let newBalance = parseFloat(currentBalance) + topupAmount;
+
+        outputDiv.innerHTML = `
+            <p>Current Balance: ₱${currentBalance.toFixed(2)}</p>
+            <p>Top-up Amount: +₱${topupAmount.toFixed(2)}</p>
+            <p><strong>New Balance: ₱${newBalance.toFixed(2)}</strong></p>
+        `;
+    });
+}
+
+function submitTopup(studentId, currentBalance) {
+    let amount = parseFloat(document.getElementById("topupInput").value) || 0;
+
+    fetch(`/manual_topup/${studentId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: `amount=${amount}`
+    })
+    .then(response => {
+        if (response.redirected) {
+            window.location.href = response.url; // reload dashboard
+        }
+    });
+}
+
+function openEditModal(transactionId, amount, studentId) {
+    currentTransactionId = transactionId;
+    currentStudentId = studentId;
+    document.getElementById("editModal").style.display = "block";
+    document.getElementById("editAmount").value = amount;
+}
+
+function closeEditModal() {
+    document.getElementById("editModal").style.display = "none";
+}
+
+document.getElementById("editForm").addEventListener("submit", function(e) {
+    e.preventDefault();
+    let newAmount = parseFloat(document.getElementById("editAmount").value);
+
+    fetch(`/edit_transaction/${currentTransactionId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: `amount=${newAmount}`
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.error) {
+            alert(data.error);
+            return;
+        }
+
+        // Update right-side balance panel live
+        document.getElementById("studentDetail").innerHTML = `
+            <p><strong>${data.full_name}</strong> (${data.school_id})</p>
+            <p>Current Balance: ₱${data.balance.toFixed(2)}</p>
+        `;
+
+        // Update transaction row amount live
+        const row = document.querySelector(`#txn-${currentTransactionId} td:nth-child(5)`);
+        if (row) row.textContent = `₱${newAmount.toFixed(2)}`;
+
+        closeEditModal();
+    });
+});
+</script>
 {% endblock %}

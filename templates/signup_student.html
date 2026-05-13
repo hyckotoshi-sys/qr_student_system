@@ -1,24 +1,76 @@
 {% extends "base.html" %}
 {% block content %}
 <h2>Student Sign Up</h2>
-<form method="POST">
-    <label>Full Name:</label><input type="text" name="full_name" required><br><br>
-    <label>Student ID No:</label><input type="text" name="school_id" required><br><br>
-    <label>Email:</label><input type="email" name="email" required><br><br>
-    <label>Contact Number:</label><input type="text" name="contact_number"><br><br>
-    <label>Year Level Strand:</label>
-    <select name="strand" required>
+<form action="{{ url_for('signup_student') }}" method="POST">
+    <label for="full_name">Full name:</label>
+    <input type="text" id="full_name" name="full_name" required><br>
+
+    <label for="school_id">School ID:</label>
+    <input type="text" id="school_id" name="school_id" required><br>
+
+    <label for="email">Email Address:</label>
+    <input type="email" id="email" name="email" required><br>
+
+    <label for="contact_number">Contact Number:</label>
+    <input type="text" id="contact_number" name="contact_number" required><br>
+
+    <label for="grade_level">Grade Level:</label>
+    <select id="grade_level" name="grade_level" required>
+        <option value="Grade 11">Grade 11</option>
+        <option value="Grade 12">Grade 12</option>
+    </select><br>
+
+    <label for="strand">Strand:</label>
+    <select id="strand" name="strand" required>
         <option value="STEM">STEM</option>
         <option value="ABM">ABM</option>
-        <option value="HUMSS">HUMSS</option>
-        <option value="TVL">TVL</option>
         <option value="GAS">GAS</option>
-    </select><br><br>
-    <label>Guardian Name:</label><input type="text" name="guardian_name"><br><br>
-    <label>Parent Email:</label><input type="email" name="parent_email"><br><br>
-    <label>Password:</label><input type="password" name="password" required><br><br>
-    <label>Confirm Password:</label><input type="password" name="password_confirm" required><br><br>
-    <label>4-digit PIN:</label><input type="text" name="pin" maxlength="4" required><br><br>
+        <option value="TVL">TVL</option>
+        <option value="HUMMS">HUMMS</option>
+    </select><br>
+
+    <label for="guardian_name">Guardian's Full Name:</label>
+    <input type="text" id="guardian_name" name="guardian_name" required><br>
+
+    <label for="parent_email">Guardian's Email Address:</label>
+    <input type="email" id="parent_email" name="parent_email" required><br>
+
+    <label for="password">Password:</label>
+    <input type="password" id="password" name="password" required><br>
+
+    <label for="pin">Enter 4-digit PIN:</label>
+    <input type="password" id="pin" name="pin" maxlength="4" required><br>
+
+    <label for="security_q1">Security Question 1:</label>
+    <select id="security_q1" name="security_q1" required>
+        <option value="mother_maiden">Mother’s maiden name?</option>
+        <option value="first_pet">First pet’s name?</option>
+        <option value="birth_city">City of birth?</option>
+        <option value="favorite_teacher">Favorite teacher’s name?</option>
+        <option value="favorite_food">Favorite food?</option>
+    </select><br>
+    <input type="text" id="security_a1" name="security_a1" required><br>
+
+    <label for="security_q2">Security Question 2:</label>
+    <select id="security_q2" name="security_q2" required>
+        <option value="first_school">First school?</option>
+        <option value="best_friend">Childhood best friend?</option>
+        <option value="dream_job">Dream job as a child?</option>
+        <option value="favorite_subject">Favorite subject?</option>
+        <option value="favorite_movie">Favorite movie?</option>
+    </select><br>
+    <input type="text" id="security_a2" name="security_a2" required><br>
+
+    <label for="security_q3">Security Question 3:</label>
+    <select id="security_q3" name="security_q3" required>
+        <option value="favorite_book">Favorite book?</option>
+        <option value="favorite_color">Favorite color?</option>
+        <option value="favorite_song">Favorite song?</option>
+        <option value="nickname">Childhood nickname?</option>
+        <option value="first_car">First car model?</option>
+    </select><br>
+    <input type="text" id="security_a3" name="security_a3" required><br>
+
     <button type="submit">Sign Up</button>
 </form>
 {% endblock %}

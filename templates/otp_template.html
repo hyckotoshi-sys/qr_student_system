@@ -1,39 +1,33 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
     <meta charset="UTF-8">
-    <title>Your OTP Code</title>
+    <title>OTP Verification</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #f4f6f9;
-            color: #333;
-            padding: 20px;
-        }
+        body { font-family: Arial, sans-serif; }
         .otp-box {
-            background: #fff;
             border: 1px solid #ccc;
-            border-radius: 8px;
             padding: 20px;
-            text-align: center;
+            margin: 20px auto;
             max-width: 400px;
-            margin: auto;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            text-align: center;
+            background-color: #f9f9f9;
+            border-radius: 8px;
         }
         .otp-code {
-            font-size: 28px;
+            font-size: 24px;
             font-weight: bold;
-            color: #3498db;
-            margin: 20px 0;
+            color: #007bff;
         }
     </style>
 </head>
 <body>
     <div class="otp-box">
-        <h2>Your Secure Login OTP</h2>
-        <p>Please use the following code to complete your login:</p>
-        <div class="otp-code">{{ otp }}</div>
-        <p>This code will expire in 5 minutes. Do not share it with anyone.</p>
+        <h2>{{ role|capitalize }} OTP Verification</h2>
+        <p>Your one‑time password is:</p>
+        <p class="otp-code">{{ otp }}</p>
+        <p>This code will expire in 5 minutes. Please do not share it with anyone.</p>
     </div>
 </body>
 </html>
+

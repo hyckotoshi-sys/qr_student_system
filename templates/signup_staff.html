@@ -1,11 +1,43 @@
 {% extends "base.html" %}
+{% block title %}Staff Sign Up{% endblock %}
 {% block content %}
-<h2>Canteen Staff Sign Up</h2>
-<form method="POST">
-    <label>Full Name:</label><input type="text" name="full_name" required><br><br>
-    <label>Contact Number:</label><input type="text" name="contact_number"><br><br>
-    <label>Email:</label><input type="email" name="email" required><br><br>
-    <label>Password:</label><input type="password" name="password" required><br><br>
-    <button type="submit">Sign Up</button>
-</form>
+    <h2>Staff Sign Up</h2>
+    <form action="/signup/staff" method="POST">
+        <label for="full_name">Full Name:</label><br>
+        <input type="text" id="full_name" name="full_name" placeholder="Full Name" required><br>
+
+        <label for="contact_number">Contact Number:</label><br>
+        <input type="text" id="contact_number" name="contact_number" placeholder="Contact Number" required><br>
+
+        <label for="email">Email Address:</label><br>
+        <input type="email" id="email" name="email" placeholder="Email" required><br>
+
+        <label for="password">Password:</label><br>
+        <input type="password" id="password" name="password" placeholder="Password" required><br>
+
+        <!-- Security Questions -->
+        <label for="security_q1">Security Question 1:</label><br>
+        <select id="security_q1" name="security_q1" required>
+            <option value="favorite_food">What is your favorite food?</option>
+            <option value="birth_city">What city were you born in?</option>
+            <option value="first_school">What was the name of your first school?</option>
+        </select><br>
+        <input type="text" id="security_a1" name="security_a1" placeholder="Answer" required><br>
+
+        <label for="security_q2">Security Question 2:</label><br>
+        <select id="security_q2" name="security_q2" required>
+            <option value="favorite_movie">What is your favorite movie?</option>
+            <option value="nickname">What was your childhood nickname?</option>
+        </select><br>
+        <input type="text" id="security_a2" name="security_a2" placeholder="Answer" required><br>
+
+        <label for="security_q3">Security Question 3:</label><br>
+        <select id="security_q3" name="security_q3" required>
+            <option value="favorite_book">What is your favorite book?</option>
+            <option value="favorite_color">What is your favorite color?</option>
+        </select><br>
+        <input type="text" id="security_a3" name="security_a3" placeholder="Answer" required><br>
+
+        <button type="submit">Sign Up</button>
+    </form>
 {% endblock %}

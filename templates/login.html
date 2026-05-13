@@ -1,15 +1,15 @@
-<!doctype html>
+<!DOCTYPE html>
 <html>
-<head><title>Login</title></head>
+<head>
+    <title>Login</title>
+</head>
 <body>
-  <h1>Login</h1>
-  {% if error %}<p style="color:red;">{{ error }}</p>{% endif %}
-  <form method="POST" action="/login">
-    <label>Username:</label>
-    <input type="text" name="username"><br>
-    <label>Password:</label>
-    <input type="password" name="password"><br>
-    <button type="submit">Login</button>
-  </form>
+    <h2>Login</h2>
+    <nav>
+        <a href="{{ url_for('signin_student') }}">Student</a> |
+        <a href="{{ url_for('signin_admin') }}">Admin</a> |
+        <a href="{{ url_for('signin_staff') }}">Canteen Staff</a>
+    </nav>
 </body>
 </html>
+

@@ -1,38 +1,111 @@
 {% extends "base.html" %}
 {% block content %}
-<h2>Student Dashboard</h2>
+<div class="dashboard-container" style="display:flex;">
 
-<div>
-    <p><strong>Name:</strong> {{ student[0] }}</p>
-    <p><strong>School ID:</strong> {{ student[1] }}</p>
-    <p><strong>Email:</strong> {{ student[2] }}</p>
-    <p><strong>Balance:</strong> {{ student[3] }}</p>
-    <h2>Your QR Code</h2>
-<img src="{{ url_for('generate_qr') }}" alt="Student QR Code">
+    <!-- Sidebar -->
+    <div class="sidebar-actions" style="width:200px; float:left; background:#f1f1f1; padding:15px; border-radius:8px; margin-right:20px;">
+        <h3>Actions</h3>
+        <ul style="list-style:none; padding:0; margin:0;">
+            <li style="margin-bottom:8px;"><a href="#" onclick="openModal('generateQRModal')"><i class="fas fa-qrcode"></i> Generate QR</a></li>
+            <li style="margin-bottom:8px;"><a href="#" onclick="openModal('fixedQRModal')"><i class="fas fa-id-card"></i> View Fixed QR</a></li>
+            <li style="margin-bottom:8px;"><a href="#" onclick="openModal('resetPasswordModal')"><i class="fas fa-lock"></i> Reset Password</a></li>
+            <li style="margin-bottom:8px;"><a href="{{ url_for('download_transactions_pdf') }}"><i class="fas fa-file-pdf"></i> Download History (PDF)</a></li>
+        </ul>
+    </div>
 
+    <!-- Main Content -->
+    <main style="flex:1; padding:20px;">
+        <!-- Student Info -->
+        <section style="margin-bottom:20px;">
+            <h2>Student Dashboard</h2>
+            <p><strong>Name:</strong> {{ student.full_name }}</p>
+            <p><strong>School ID:</strong> {{ student.school_id }}</p>
+            <p><strong>Year Level:</strong> {{ student.grade_level }}</p>
+            <p><strong>Strand:</strong> {{ student.strand }}</p>
+            <p><strong>Balance:</strong> ₱{{ student.balance }}</p>
+            <a href="{{ url_for('topup') }}" style="background:#007bff; color:white; padding:8px 12px; border-radius:4px; text-decoration:none;">Top-Up</a>
+        </section>
 
+        <hr>
 
+        <!-- Transaction History -->
+        <section>
+            <h3>Transaction History</h3>
+            <style>
+                .txn-table { width:100%; border-collapse:collapse; font-size:14px; border:1px solid #ccc; }
+                .txn-table th { padding:10px; text-align:left; background:#007bff; color:white; }
+                .txn-table td { padding:8px; }
+                .txn-table tr:nth-child(even) { background-color:#f9f9f9; }
+                .txn-table tr:nth-child(odd) { background-color:#ffffff; }
+            </style>
+            <table class="txn-table">
+                <thead>
+                    <tr>
+                        <th>Type</th>
+                        <th>Date</th>
+                        <th>Amount</th>
+                        <th>Performed By</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for txn in history %}
+                    <tr>
+                        <td>
+                            {% if txn.txn_type == 'Top-Up' %}
+                                <span style="color:green; font-weight:bold;">{{ txn.txn_type }}</span>
+                            {% else %}
+                                <span style="color:red; font-weight:bold;">{{ txn.txn_type }}</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ txn.created_at }}</td>
+                        <td>₱{{ txn.amount }}</td>
+                        <td>{{ txn.performed_by }}</td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="4" style="text-align:center; color:#888;">No transactions yet.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </section>
+    </main>
 </div>
 
-<hr>
+<!-- 🔹 Modals -->
 
-<h3>Top-Up Balance</h3>
+<!-- Generate QR Modal -->
+<div id="generateQRModal" class="modal">
+  <div class="modal-content">
+    <span class="close" onclick="closeModal('generateQRModal')">&times;</span>
+    <h3>Generated QR</h3>
+    <img id="qrImage" src="" alt="QR Code">
+  </div>
+</div>
 
+<!-- Fixed QR Modal -->
+<div id="fixedQRModal" class="modal">
+  <div class="modal-content">
+    <span class="close" onclick="closeModal('fixedQRModal')">&times;</span>
+    <h3>Fixed QR</h3>
+    <img id="fixedQrImage" src="" alt="Fixed QR">
+    <br><br>
+    <a id="downloadFixedQR" href="{{ url_for('fixed_qr') }}" download="fixed_qr.jpg" 
+       style="background:#28a745; color:white; padding:8px 12px; border-radius:4px; text-decoration:none;">
+       Download as JPG
+    </a>
+  </div>
+</div>
 
-    <a href="{{ url_for('topup') }}">Submit Top-Up</a>
-
-</form>
-
-<hr>
-
-<h3>QR Code Actions</h3>
-<button onclick="location.href='/generate_qr'">Generate QR</button>
-<button onclick="location.href='/scan_staff_qr'">Scan QR</button>
-
-<hr>
-
-<h3>History</h3>
-<button onclick="location.href='/student_history'">View Transaction History</button>
-
-
+<!-- Reset Password Modal -->
+<div id="resetPasswordModal" class="modal">
+  <div class="modal-content">
+    <span class="close" onclick="closeModal('resetPasswordModal')">&times;</span>
+    <h3>Reset Password</h3>
+    <a href="{{ url_for('reset_password_student') }}" 
+       style="background:#007bff; color:white; padding:8px 12px; border-radius:4px; text-decoration:none;">
+       Go to Reset Password
+    </a>
+  </div>
+</div>
 {% endblock %}

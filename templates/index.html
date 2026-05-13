@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>QR Student System</title>
+</head>
+<body>
+    <h1>Welcome to QR Student System</h1>
+    <p>Please choose an option below:</p>
+
+    <div style="margin-top: 20px;">
+        <a href="{{ url_for('login') }}" 
+           style="display:inline-block; padding:10px 15px; background:#007bff; color:white; text-decoration:none; border-radius:5px; margin-right:10px;">
+            Sign In
+        </a>
+        <a href="{{ url_for('signup') }}" 
+           style="display:inline-block; padding:10px 15px; background:#28a745; color:white; text-decoration:none; border-radius:5px; margin-right:10px;">
+           Sign Up
+        </a>
+        <a href="{{ url_for('reset') }}" 
+           style="display:inline-block; padding:10px 15px; background:#ffc107; color:black; text-decoration:none; border-radius:5px;">
+           Reset Password
+        </a>
+    </div>
+
+</body>
+</html>
