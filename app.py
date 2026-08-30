@@ -8,8 +8,10 @@ import datetime
 import uuid
 import io
 from werkzeug.utils import secure_filename
-from sendgrid import SendGridAPIClient
-from sendgrid.helpers.mail import Mail, Email
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+import random, datetime
 import qrcode
 from jinja2 import Environment, FileSystemLoader
 
@@ -28,7 +30,7 @@ def allowed_file(filename):
 
 # --------------- Routes ---------------
 
-@app.route("/")
+@app.route("/") 
 def index():
     # Main landing page for students
     return render_template("index.html")
@@ -95,12 +97,15 @@ def dashboard_registered():
                            registered_students=registered_students)
 
 # Transactions
-@app.route('/admin/transactions')
+@app.route('/dashboard/transactions')
 def dashboard_transactions():
+    start = request.args.get("start_date")
+    end = request.args.get("end_date")
+
     conn = get_connection()
     cursor = conn.cursor(dictionary=True)
 
-    cursor.execute("""
+    query = """
         SELECT t.transaction_id, t.created_at, t.type, t.amount, t.payment_mode,
                COALESCE(s.full_name, a.full_name) AS performed_by,
                st.full_name AS customer_name, st.school_id AS id_no, t.remarks
@@ -108,14 +113,25 @@ def dashboard_transactions():
         LEFT JOIN staff s ON t.staff_id = s.staff_id
         LEFT JOIN admins a ON t.admin_id = a.admin_id
         LEFT JOIN students st ON t.student_id = st.student_id
-        ORDER BY t.created_at DESC
-    """)
+        WHERE 1=1
+    """
+    params = []
+    if start:
+        query += " AND t.created_at >= %s"
+        params.append(start)
+    if end:
+        query += " AND t.created_at <= %s"
+        params.append(end)
+
+    query += " ORDER BY t.created_at DESC"
+    cursor.execute(query, params)
     transactions = cursor.fetchall()
     conn.close()
 
-    return render_template('dashboard_admin.html',
-                           section='transactions',
-                           transactions=transactions)
+    return render_template('student_transactions.html', transactions=transactions)
+
+
+
 
 
 # -------------------
@@ -244,26 +260,67 @@ def get_connection():
     )
 
 # ---------------- Email Function ----------------
-SENDGRID_API_KEY = os.environ.get("SENDGRID_API_KEY")
-FROM_EMAIL = Email("hyckotoshi@gmail.com", name="FCD Central Institute")
-REPLY_TO_EMAIL = Email("hyckotoshi@gmail.com", name="Support Team")
+FROM_EMAIL = "hyckotoshi@gmail.com"
+REPLY_TO_EMAIL = "hyckotoshi@gmail.com"
 
-def send_email(to_email, subject, body_text=None, body_html=None):
-    message = Mail(
-        from_email=Email("hyckotoshi@gmail.com", "FCD Central Institute"),
-        to_emails=to_email,
-        subject=subject,
-        plain_text_content=body_text if body_text else "",
-        html_content=body_html if body_html else body_text
-    )
+
+def send_email(to_emails, subject, body_text=None, body_html=None):
+    sender_email = "hyckotoshi@gmail.com"
+    password = "jpxb fsam zljx zjgl"  # Use Gmail/Outlook App Password
+
+    msg = MIMEMultipart("alternative")
+    msg["From"] = f"FCD Central Institute <{sender_email}>"
+    msg["To"] = ", ".join(to_emails)
+    msg["Subject"] = subject
+
+    if body_text:
+        msg.attach(MIMEText(body_text, "plain"))
+    if body_html:
+        msg.attach(MIMEText(body_html, "html"))
+
     try:
-        sg = SendGridAPIClient(SENDGRID_API_KEY)
-        response = sg.send(message)
-        print(f"Email sent to {to_email}, status code: {response.status_code}")
-        return response
+        server = smtplib.SMTP("smtp.gmail.com", 587)  # Gmail SMTP
+        server.starttls()
+        server.login(sender_email, password)
+        server.sendmail(sender_email, to_emails, msg.as_string())
+        server.quit()
+        print(f"Email sent to {to_emails}")
+        return True
     except Exception as e:
         print(f"Error sending email: {str(e)}")
-        return None
+        return False
+
+
+def generate_and_send_otp(email, subject="Your Secure Login OTP", role="student"):
+    otp = str(random.randint(100000, 999999))
+    expires = datetime.datetime.now() + datetime.timedelta(minutes=5)
+
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("INSERT INTO otps (email, otp_code, expires_at) VALUES (%s,%s,%s)", (email, otp, expires))
+    conn.commit()
+    conn.close()
+
+    # Role-specific body text
+    if role == "student":
+        body_text = f"Hello Student,\n\nYour OTP is: {otp} (expires in 5 minutes).\n\nUse this to access your student dashboard."
+    elif role == "admin":
+        body_text = f"Hello Admin,\n\nYour OTP is: {otp} (expires in 5 minutes).\n\nUse this to access the admin dashboard securely."
+    elif role == "staff":
+        body_text = f"Hello Staff,\n\nYour OTP is: {otp} (expires in 5 minutes).\n\nUse this to access the staff dashboard securely."
+    else:
+        body_text = f"Your OTP is: {otp} (expires in 5 minutes)."
+
+    # Load HTML template with Jinja2
+    env = Environment(loader=FileSystemLoader("templates"))
+    template = env.get_template("otp_template.html")
+    body_html = template.render(otp=otp, role=role)
+
+    # Send email via SMTP
+    send_email([email], subject, body_text, body_html)
+
+    return otp
+
 
 # ---------------- OTP Function ----------------
 def generate_and_send_otp(email, subject="Your Secure Login OTP", role="student"):
@@ -291,7 +348,7 @@ def generate_and_send_otp(email, subject="Your Secure Login OTP", role="student"
     template = env.get_template("otp_template.html")
     body_html = template.render(otp=otp, role=role)
 
-    send_email(email, subject, body_text, body_html)
+    send_email([email], subject, body_text, body_html)
     return otp
 
 
@@ -523,6 +580,7 @@ def signup_student():
                 VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""", data)
             conn.commit()
 
+            
             # ✅ Verify insertion
             cursor.execute("SELECT full_name, email FROM students WHERE email=%s", (request.form["email"],))
             student = cursor.fetchone()
@@ -1070,6 +1128,29 @@ def topup():
     flash("Top-up submitted and awaiting admin approval.", "info")
     return redirect(url_for("dashboard_student"))
 
+@app.route("/submit_topup", methods=["POST"])
+def submit_topup():
+    gcash_number = request.form["gcash_number"]
+    gcash_owner = request.form["gcash_owner"]
+    reference_number = request.form["reference_number"]
+    amount = request.form["amount"]
+    proof = request.files["proof"]
+
+    filename = secure_filename(proof.filename)
+    proof.save(os.path.join(app.config["UPLOAD_FOLDER"], filename))
+
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+        INSERT INTO topups (student_id, gcash_number, gcash_owner, reference_number, amount, proof_image, status)
+        VALUES (%s, %s, %s, %s, %s, %s, 'pending')
+    """, (session["student_id"], gcash_number, gcash_owner, reference_number, amount, filename))
+    conn.commit()
+    conn.close()
+
+    flash("Top-up request submitted. Please wait for admin approval.", "success")
+    return redirect(url_for("dashboard_student"))
+
 
 
 # ---------------- Generate QR (unique each time) ----------------
@@ -1081,6 +1162,15 @@ def generate_qr():
     filepath = os.path.join("static", f"qr_{student_id}.jpg")
     qr.save(filepath)
     return send_file(filepath, mimetype="image/jpeg")
+
+def generate_student_qr(student_id):
+    qr_folder = os.path.join("static", "qrcodes")
+    os.makedirs(qr_folder, exist_ok=True)
+    qr_path = os.path.join(qr_folder, f"{student_id}.png")
+    qr_img = qrcode.make(student_id)
+    qr_img.save(qr_path)
+    return qr_path
+
 
 # Fixed QR for student
 @app.route("/fixed_qr/<int:student_id>")
@@ -1095,6 +1185,8 @@ def fixed_qr(student_id):
 def download_fixed_qr(student_id):
     filepath = os.path.join("static", f"fixed_qr_{student_id}.jpg")
     return send_file(filepath, as_attachment=True)
+
+
 
 
 # ---------------- Admin Dashboard ----------------
@@ -1849,30 +1941,32 @@ def unregistered_transactions():
 
 
 # ---------------- Real-Time QR Scanning (token lookup) ----------------
-@app.route("/scan_qr", methods=["GET","POST"])
+@app.route("/scan_qr", methods=["POST"])
 def scan_qr():
-    if request.method == "GET":
-        return render_template("scan_qr.html")
-
-    if "role" not in session or session["role"] != "staff":
-        return redirect(url_for("signin_staff"))
-
-    token = request.form["student_id"]
-    amount = float(request.form["amount"])
+    student_id = request.form["student_id"]
+    amount = request.form["amount"]
 
     conn = get_connection()
-    cursor = conn.cursor()
-    cursor.execute("SELECT student_id FROM qr_tokens WHERE token=%s ORDER BY created_at DESC LIMIT 1", (token,))
-    result = cursor.fetchone()
-    conn.close()
+    cursor = conn.cursor(dictionary=True)
 
-    if result:
-        student_id = result[0]
-        session["pending_student"] = student_id
-        session["pending_amount"] = amount
-        return redirect(url_for("confirm_transaction"))
+    cursor.execute("SELECT balance FROM students WHERE student_id=%s", (student_id,))
+    student = cursor.fetchone()
+
+    if student and student["balance"] >= Decimal(amount):
+        new_balance = student["balance"] - Decimal(amount)
+        cursor.execute("UPDATE students SET balance=%s WHERE student_id=%s", (new_balance, student_id))
+        cursor.execute("""INSERT INTO transactions (student_id, type, amount, status)
+                          VALUES (%s, 'purchase', %s, 'completed')""", (student_id, amount))
+        conn.commit()
+        flash("Purchase successful.", "success")
     else:
-        return "Invalid or expired QR code"
+        flash("Insufficient balance.", "error")
+
+    conn.close()
+    return redirect(url_for("dashboard_staff"))
+
+
+
 
 # ---------------- Student Scans Staff QR ----------------
 @app.route("/scan_staff_qr", methods=["POST"])
