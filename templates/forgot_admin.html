@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Admin Forgot Password</title>
+</head>
+<body>
+  <h2>Reset Admin Password</h2>
+  <form action="{{ url_for('forgot_admin') }}" method="POST">
+    <label for="email">Email Address:</label>
+    <input type="email" id="email" name="email" required><br>
+
+    <label for="security_q1">Security Question 1:</label>
+    <input type="text" id="security_q1" name="security_q1" required><br>
+    <input type="text" id="security_a1" name="security_a1" required><br>
+
+    <label for="security_q2">Security Question 2:</label>
+    <input type="text" id="security_q2" name="security_q2" required><br>
+    <input type="text" id="security_a2" name="security_a2" required><br>
+
+    <label for="security_q3">Security Question 3:</label>
+    <input type="text" id="security_q3" name="security_q3" required><br>
+    <input type="text" id="security_a3" name="security_a3" required><br>
+
+    <label for="new_password">New Password:</label>
+    <input type="password" id="new_password" name="new_password" required><br>
+
+    <button type="submit">Reset Password</button>
+  </form>
+</body>
+</html>

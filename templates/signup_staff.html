@@ -1,43 +1,55 @@
-{% extends "base.html" %}
-{% block title %}Staff Sign Up{% endblock %}
-{% block content %}
-    <h2>Staff Sign Up</h2>
-    <form action="/signup/staff" method="POST">
-        <label for="full_name">Full Name:</label><br>
-        <input type="text" id="full_name" name="full_name" placeholder="Full Name" required><br>
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Staff Sign Up</title>
+</head>
+<body>
+  <h2>Staff Sign Up</h2>
+  <form action="{{ url_for('signup_staff') }}" method="POST">
+    <label for="full_name">Full Name:</label>
+    <input type="text" id="full_name" name="full_name" required><br>
 
-        <label for="contact_number">Contact Number:</label><br>
-        <input type="text" id="contact_number" name="contact_number" placeholder="Contact Number" required><br>
+    <label for="contact_number">Contact Number:</label>
+    <input type="text" id="contact_number" name="contact_number" required><br>
 
-        <label for="email">Email Address:</label><br>
-        <input type="email" id="email" name="email" placeholder="Email" required><br>
+    <label for="email">Email Address:</label>
+    <input type="email" id="email" name="email" required><br>
 
-        <label for="password">Password:</label><br>
-        <input type="password" id="password" name="password" placeholder="Password" required><br>
+    <label for="password">Password:</label>
+    <input type="password" id="password" name="password" required><br>
 
-        <!-- Security Questions -->
-        <label for="security_q1">Security Question 1:</label><br>
-        <select id="security_q1" name="security_q1" required>
-            <option value="favorite_food">What is your favorite food?</option>
-            <option value="birth_city">What city were you born in?</option>
-            <option value="first_school">What was the name of your first school?</option>
-        </select><br>
-        <input type="text" id="security_a1" name="security_a1" placeholder="Answer" required><br>
+    <!-- Security Questions -->
+    <label for="security_q1">Security Question 1:</label>
+    <select id="security_q1" name="security_q1" required>
+      <option value="favorite_food">Favorite food?</option>
+      <option value="birth_city">City of birth?</option>
+      <option value="first_pet">First pet’s name?</option>
+      <option value="nickname">Childhood nickname?</option>
+      <option value="favorite_teacher">Favorite teacher’s name?</option>
+    </select><br>
+    <input type="text" id="security_a1" name="security_a1" required><br>
 
-        <label for="security_q2">Security Question 2:</label><br>
-        <select id="security_q2" name="security_q2" required>
-            <option value="favorite_movie">What is your favorite movie?</option>
-            <option value="nickname">What was your childhood nickname?</option>
-        </select><br>
-        <input type="text" id="security_a2" name="security_a2" placeholder="Answer" required><br>
+    <label for="security_q2">Security Question 2:</label>
+    <select id="security_q2" name="security_q2" required>
+      <option value="first_school">First school?</option>
+      <option value="best_friend">Childhood best friend?</option>
+      <option value="dream_job">Dream job as a child?</option>
+      <option value="favorite_subject">Favorite subject?</option>
+      <option value="favorite_movie">Favorite movie?</option>
+    </select><br>
+    <input type="text" id="security_a2" name="security_a2" required><br>
 
-        <label for="security_q3">Security Question 3:</label><br>
-        <select id="security_q3" name="security_q3" required>
-            <option value="favorite_book">What is your favorite book?</option>
-            <option value="favorite_color">What is your favorite color?</option>
-        </select><br>
-        <input type="text" id="security_a3" name="security_a3" placeholder="Answer" required><br>
+    <label for="security_q3">Security Question 3:</label>
+    <select id="security_q3" name="security_q3" required>
+      <option value="favorite_book">Favorite book?</option>
+      <option value="favorite_color">Favorite color?</option>
+      <option value="favorite_song">Favorite song?</option>
+      <option value="first_car">First car model?</option>
+      <option value="hobby">Favorite hobby?</option>
+    </select><br>
+    <input type="text" id="security_a3" name="security_a3" required><br>
 
-        <button type="submit">Sign Up</button>
-    </form>
-{% endblock %}
+    <button type="submit">Sign Up</button>
+  </form>
+</body>
+</html>

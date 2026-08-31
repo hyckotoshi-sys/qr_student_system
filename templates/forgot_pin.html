@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Forgot PIN</title>
+  <style>
+    body { font-family: Arial, sans-serif; background:#f9fafb; display:flex; justify-content:center; align-items:center; height:100vh; }
+    .forgot-box { background:#fff; padding:30px; border-radius:8px; box-shadow:0 4px 10px rgba(0,0,0,0.1); width:350px; text-align:center; }
+    input { width:100%; padding:10px; margin:10px 0; border:1px solid #ccc; border-radius:6px; }
+    button { width:100%; padding:10px; background:#f59e0b; color:#fff; border:none; border-radius:6px; cursor:pointer; }
+    button:hover { background:#d97706; }
+  </style>
+</head>
+<body>
+  <div class="forgot-box">
+    <h2>Forgot PIN</h2>
+    <p>Answer your security question:</p>
+    <form method="POST">
+      <label>{{ question }}</label>
+      <input type="text" name="answer" required placeholder="Your Answer">
+      <button type="submit">Submit</button>
+    </form>
+  </div>
+</body>
+</html>

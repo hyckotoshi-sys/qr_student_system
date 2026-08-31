@@ -1,80 +1,93 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Canteen Staff Dashboard</title>
-    <script src="https://unpkg.com/html5-qrcode"></script>
+  <title>Staff Dashboard</title>
+  <style>
+    body { font-family: Arial, sans-serif; background:#f9fafb; margin:0; padding:20px; }
+    h2 { color:#1E3A8A; }
+    .card { background:#fff; padding:20px; border-radius:8px; box-shadow:0 2px 6px rgba(0,0,0,0.1); margin-bottom:20px; }
+    table { border-collapse:collapse; width:100%; margin-top:10px; }
+    table th, table td { border:1px solid #d1d5db; padding:8px; text-align:center; }
+    table th { background:#f3f4f6; color:#374151; }
+    table tr:nth-child(even) { background:#f9fafb; }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
-    <h2>Welcome, Canteen Staff</h2>
+  <h2>Welcome, {{ staff.full_name }}</h2>
+  <div class="card">
+    <p>Email: {{ staff.email }}</p>
+    <p>Contact: {{ staff.contact_number }}</p>
+    <p>Joined: {{ staff.created_at }}</p>
+  </div>
 
-    <!-- Scan Student QR -->
-    <h3>Scan Student QR</h3>
-    <div id="reader" style="width:300px"></div>
-    <form id="scanForm" action="/scan_qr" method="POST">
-        <input type="hidden" name="student_id" id="student_id">
-        <input type="number" name="amount" placeholder="Amount" required>
-        <button type="submit">Process Payment</button>
-    </form>
-
-    <script>
-        function onScanSuccess(decodedText, decodedResult) {
-            document.getElementById("student_id").value = decodedText;
-            alert("Student QR scanned: " + decodedText);
-        }
-        const html5QrCode = new Html5Qrcode("reader");
-        html5QrCode.start(
-            { facingMode: "environment" }, 
-            { fps: 10, qrbox: 250 },
-            onScanSuccess
-        );
-    </script>
-
-    <!-- Manual Input for Registered Students -->
-    <h3>Manual Input (Registered Student)</h3>
-    <form action="/staff_transaction" method="POST">
-        <input type="text" name="school_id" placeholder="Enter Student ID" required>
-        <input type="number" name="amount" placeholder="Amount" required>
-        <button type="submit">Process Payment</button>
-    </form>
-
-    <!-- Manual Input for Unregistered Students -->
-    <h3>Manual Input (Unregistered Student)</h3>
-    <form action="/staff_unregistered_transaction" method="POST">
-        <input type="text" name="school_id" placeholder="Enter School ID" required>
-        <input type="number" name="amount" placeholder="Amount Paid" required>
-        <button type="submit">Record Transaction</button>
-    </form>
-
-    <!-- Generate Staff QR -->
-    <h3>Generate Staff QR</h3>
-    <img src="{{ url_for('generate_staff_qr') }}" alt="Staff QR Code">
-
-    <!-- Transaction History -->
-    <h3>Registered Transactions</h3>
-    <table border="1">
-        <tr><th>ID</th><th>Student</th><th>Amount</th><th>Status</th><th>Timestamp</th></tr>
-        {% for txn in registered_txns %}
-        <tr>
-            <td>{{ txn.transaction_id }}</td>
-            <td>{{ txn.student_id }}</td>
-            <td>{{ txn.amount }}</td>
-            <td>{{ txn.status }}</td>
-            <td>{{ txn.timestamp }}</td>
-        </tr>
-        {% endfor %}
+  <div class="card">
+    <h3>Transactions Handled</h3>
+    <table>
+      <tr><th>Student / Customer</th><th>Amount</th><th>Type</th><th>Status</th><th>Date</th></tr>
+      {% for tx in staff_transactions %}
+      <tr>
+        <td>{{ tx.student_name or tx.customer_name }}</td>
+        <td>₱{{ tx.amount }}</td>
+        <td>{{ tx.type }}</td>
+        <td>{{ tx.status }}</td>
+        <td>{{ tx.created_at }}</td>
+      </tr>
+      {% endfor %}
     </table>
+  </div>
 
-    <h3>Unregistered Transactions</h3>
-    <table border="1">
-        <tr><th>ID</th><th>School ID</th><th>Amount</th><th>Timestamp</th></tr>
-        {% for txn in unregistered_txns %}
-        <tr>
-            <td>{{ txn.id }}</td>
-            <td>{{ txn.school_id }}</td>
-            <td>{{ txn.amount }}</td>
-            <td>{{ txn.timestamp }}</td>
-        </tr>
-        {% endfor %}
+  <div class="card">
+    <h3>Daily Totals</h3>
+    <table>
+      <tr><th>Date</th><th>Total Amount</th><th>Mode</th><th>Category</th></tr>
+      {% for d in staff_totals %}
+      <tr>
+        <td>{{ d.created_at }}</td>
+        <td>₱{{ d.amount }}</td>
+        <td>{{ d.mode }}</td>
+        <td>{{ d.category }}</td>
+      </tr>
+      {% endfor %}
     </table>
+  </div>
+
+  <!-- Charts -->
+  <div class="card">
+    <h3>Transactions Handled (Daily)</h3>
+    <canvas id="staffTxnChart"></canvas>
+  </div>
+
+  <div class="card">
+    <h3>Staff Totals</h3>
+    <canvas id="staffTotalsChart"></canvas>
+  </div>
+
+  <script>
+    const staffTxnCtx = document.getElementById('staffTxnChart').getContext('2d');
+    new Chart(staffTxnCtx, {
+      type: 'bar',
+      data: {
+        labels: {{ txn_dates|tojson }},
+        datasets: [
+          { label:'Top-Ups', data: {{ txn_topups|tojson }}, backgroundColor:'#22c55e' },
+          { label:'Purchases', data: {{ txn_purchases|tojson }}, backgroundColor:'#2563eb' }
+        ]
+      }
+    });
+
+    const staffTotalsCtx = document.getElementById('staffTotalsChart').getContext('2d');
+    new Chart(staffTotalsCtx, {
+      type: 'line',
+      data: {
+        labels: {{ totals_dates|tojson }},
+        datasets: [
+          { label:'Manual', data: {{ manual_totals|tojson }}, borderColor:'#6b7280', fill:false },
+          { label:'Cashless', data: {{ cashless_totals|tojson }}, borderColor:'#2563eb', fill:false },
+          { label:'Others', data: {{ other_totals|tojson }}, borderColor:'#f59e0b', fill:false }
+        ]
+      }
+    });
+  </script>
 </body>
 </html>

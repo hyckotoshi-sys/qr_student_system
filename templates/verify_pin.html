@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Enter PIN</title>
+  <style>
+    body { font-family: Arial, sans-serif; background:#f9fafb; display:flex; justify-content:center; align-items:center; height:100vh; }
+    .pin-box { background:#fff; padding:30px; border-radius:8px; box-shadow:0 4px 10px rgba(0,0,0,0.1); width:300px; text-align:center; }
+    input { width:100%; padding:10px; margin:10px 0; border:1px solid #ccc; border-radius:6px; text-align:center; font-size:20px; letter-spacing:10px; }
+    button { width:100%; padding:10px; background:#22c55e; color:#fff; border:none; border-radius:6px; cursor:pointer; }
+    button:hover { background:#16a34a; }
+    a { color:#2563eb; text-decoration:none; }
+  </style>
+</head>
+<body>
+  <div class="pin-box">
+    <h2>Enter Your 4‑Digit PIN</h2>
+    <form method="POST">
+      <input type="password" name="pin" maxlength="4" required placeholder="PIN">
+      <button type="submit">Verify PIN</button>
+    </form>
+    <p style="margin-top:10px;">
+      <a href="{{ url_for('forgot_pin') }}">Forgot PIN?</a>
+    </p>
+  </div>
+</body>
+</html>

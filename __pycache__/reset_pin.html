@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Reset PIN</title>
+  <style>
+    body { font-family: Arial, sans-serif; background:#f9fafb; display:flex; justify-content:center; align-items:center; height:100vh; }
+    .reset-box { background:#fff; padding:30px; border-radius:8px; box-shadow:0 4px 10px rgba(0,0,0,0.1); width:300px; text-align:center; }
+    input { width:100%; padding:10px; margin:10px 0; border:1px solid #ccc; border-radius:6px; text-align:center; font-size:20px; letter-spacing:10px; }
+    button { width:100%; padding:10px; background:#2563eb; color:#fff; border:none; border-radius:6px; cursor:pointer; }
+    button:hover { background:#1d4ed8; }
+  </style>
+</head>
+<body>
+  <div class="reset-box">
+    <h2>Reset Your PIN</h2>
+    <form method="POST">
+      <input type="password" name="new_pin" maxlength="4" required placeholder="New 4-digit PIN">
+      <button type="submit">Save PIN</button>
+    </form>
+  </div>
+</body>
+</html>

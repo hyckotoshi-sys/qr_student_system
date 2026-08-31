@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Admin Portal - School E-Wallet</title>
+  <style>
+    body {
+      margin:0; font-family:Arial, sans-serif;
+      background: linear-gradient(135deg, #2563eb, #1e3a8a);
+      color:#fff; text-align:center;
+    }
+    header { padding:80px 20px; }
+    header h1 { font-size:42px; margin-bottom:10px; }
+    header p { font-size:18px; color:#c7d2fe; }
+    .btn {
+      display:inline-block; margin:15px; padding:15px 25px;
+      background:#fff; color:#1e3a8a; text-decoration:none;
+      border-radius:8px; font-weight:bold; transition:0.3s;
+    }
+    .btn:hover { background:#f59e0b; color:#fff; }
+    .features { display:flex; justify-content:center; gap:20px; flex-wrap:wrap; margin:40px auto; max-width:1000px; }
+    .card { background:#fff; color:#1e3a8a; padding:20px; border-radius:10px; width:280px; box-shadow:0 4px 10px rgba(0,0,0,0.2); }
+    footer { margin-top:40px; padding:20px; background:#1e3a8a; color:#c7d2fe; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Admin Portal</h1>
+    <p>Manage transactions, students, and staff with full control</p>
+    <a href="{{ url_for('signin_admin') }}" class="btn">Admin Login</a>
+  </header>
+
+  <section class="features">
+    <div class="card">
+      <h3>📊 Real-Time Dashboards</h3>
+      <p>Monitor balances, registrations, and staff totals instantly.</p>
+    </div>
+    <div class="card">
+      <h3>👥 Student Management</h3>
+      <p>View and update student accounts and balances.</p>
+    </div>
+    <div class="card">
+      <h3>🔒 Secure Oversight</h3>
+      <p>Admin accounts protected with OTP and PIN verification.</p>
+    </div>
+  </section>
+
+  <footer>
+    <p>&copy; 2026 FCD Central Institute | Admin Portal</p>
+  </footer>
+</body>
+</html>

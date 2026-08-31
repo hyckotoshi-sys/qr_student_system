@@ -1,26 +1,73 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>QR Student System</title>
+  <meta charset="UTF-8">
+  <title>School E-Wallet System</title>
+  <style>
+    body {
+      margin:0; font-family:Arial, sans-serif;
+      background: url('/static/images/landing_bg.png') no-repeat center center fixed;
+      background-size: cover;
+      color:#fff; text-align:center;
+    }
+    header {
+      padding:80px 20px;
+      background:rgba(0,0,0,0.5);
+    }
+    header h1 { font-size:48px; margin-bottom:10px; }
+    header p { font-size:18px; color:#e5e7eb; }
+    .btn-getstarted {
+      display:inline-block; margin-top:30px; padding:15px 30px;
+      background:#f59e0b; color:#fff; font-weight:bold;
+      border-radius:8px; text-decoration:none; transition:0.3s;
+    }
+    .btn-getstarted:hover { background:#fff; color:#1e3a8a; }
+    nav { margin:40px 0; }
+    nav a {
+      display:inline-block; margin:10px; padding:15px 25px;
+      background:#fff; color:#1e3a8a; text-decoration:none;
+      border-radius:8px; font-weight:bold; transition:0.3s;
+    }
+    nav a:hover { background:#f59e0b; color:#fff; }
+    .features {
+      display:flex; justify-content:center; gap:20px;
+      flex-wrap:wrap; margin:40px auto; max-width:1000px;
+    }
+    .card {
+      background:#fff; color:#1e3a8a;
+      padding:20px; border-radius:10px;
+      width:280px; box-shadow:0 4px 10px rgba(0,0,0,0.2);
+    }
+    .card h3 { margin-top:0; }
+    footer { margin-top:40px; padding:20px; background:#1e3a8a; color:#e5e7eb; }
+  </style>
 </head>
 <body>
-    <h1>Welcome to QR Student System</h1>
-    <p>Please choose an option below:</p>
+  <header>
+    <h1>Welcome to FCD Central Institute</h1>
+    <p>Your secured system for students, staff, and administrators needs in our cafeteria</p>
+    <!-- Get Started button now leads to student signup -->
+    <a href="{{ url_for('signin_student') }}" class="btn-getstarted">Get Started</a>
+  </header>
 
-    <div style="margin-top: 20px;">
-        <a href="{{ url_for('login') }}" 
-           style="display:inline-block; padding:10px 15px; background:#007bff; color:white; text-decoration:none; border-radius:5px; margin-right:10px;">
-            Sign In
-        </a>
-        <a href="{{ url_for('signup') }}" 
-           style="display:inline-block; padding:10px 15px; background:#28a745; color:white; text-decoration:none; border-radius:5px; margin-right:10px;">
-           Sign Up
-        </a>
-        <a href="{{ url_for('reset') }}" 
-           style="display:inline-block; padding:10px 15px; background:#ffc107; color:black; text-decoration:none; border-radius:5px;">
-           Reset Password
-        </a>
+  <section class="features">
+    <div class="card">
+      <h3>💳 Easy Top-Ups</h3>
+      <p>Quickly add funds via GCash or bank transfer.</p>
     </div>
+    <div class="card">
+      <h3>📊 Smart Dashboards</h3>
+      <p>Real-time insights for admins and staff.</p>
+    </div>
+    <div class="card">
+      <h3>🔒 Secure Payments</h3>
+      <p>Safe transactions with OTP and PIN verification.</p>
+    </div>
+  </section>
 
+  <footer>
+    <p>&copy; 2026 FCD Central Institute | School E-Wallet System</p>
+  </footer>
 </body>
 </html>
+
