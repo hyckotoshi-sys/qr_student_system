@@ -1,111 +1,153 @@
-{% extends "base.html" %}
-{% block content %}
-<div class="dashboard-container" style="display:flex;">
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Student Dashboard</title>
+  <style>
+    .main { flex:1; padding:20px; }
+    .header { display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; }
+    h2 { color:#1E3A8A; margin:0; }
+    .balance { font-size:20px; font-weight:bold; color:#22c55e; }
+    .center-section { text-align:center; margin:30px 0; }
+    .btn { padding:10px 16px; border-radius:5px; text-decoration:none; cursor:pointer; margin:5px; }
+    .btn-primary { background:#2563eb; color:#fff; }
+    .btn-secondary { background:#6b7280; color:#fff; }
+    .btn-success { background:#22c55e; color:#fff; }
+    .btn-danger { background:#dc2626; color:#fff; }
+    .modal { display:none; position:fixed; z-index:1000; left:0; top:0; width:100%; height:100%; background:rgba(0,0,0,0.5); }
+    .modal-content { background:#fff; margin:10% auto; padding:20px; border-radius:8px; width:80%; max-width:600px; position:relative; }
+    .close { position:absolute; top:10px; right:15px; font-size:24px; cursor:pointer; }
 
-    <!-- Sidebar -->
-    <div class="sidebar-actions" style="width:200px; float:left; background:#f1f1f1; padding:15px; border-radius:8px; margin-right:20px;">
-        <h3>Actions</h3>
-        <ul style="list-style:none; padding:0; margin:0;">
-            <li style="margin-bottom:8px;"><a href="#" onclick="openModal('generateQRModal')"><i class="fas fa-qrcode"></i> Generate QR</a></li>
-            <li style="margin-bottom:8px;"><a href="#" onclick="openModal('fixedQRModal')"><i class="fas fa-id-card"></i> View Fixed QR</a></li>
-            <li style="margin-bottom:8px;"><a href="#" onclick="openModal('resetPasswordModal')"><i class="fas fa-lock"></i> Reset Password</a></li>
-            <li style="margin-bottom:8px;"><a href="{{ url_for('download_transactions_pdf') }}"><i class="fas fa-file-pdf"></i> Download History (PDF)</a></li>
-        </ul>
+    /* Floating Flash Messages */
+    #flash-container { position:fixed; top:20px; right:20px; z-index:2000; }
+    .flash-message { padding:12px 20px; margin-bottom:10px; border-radius:6px; font-weight:bold; color:#fff;
+                     box-shadow:0 2px 6px rgba(0,0,0,0.2); opacity:1; transition:opacity 0.5s ease; min-width:220px; }
+    .flash-message.success { background:#22c55e; }
+    .flash-message.error { background:#dc2626; }
+    .flash-message.info { background:#2563eb; }
+    .flash-message .close { margin-left:12px; cursor:pointer; font-weight:bold; }
+
+    /* Button grid */
+    .button-grid {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 12px;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+    .button-grid .btn {
+      flex: 1 1 45%; /* two buttons per row */
+      min-width: 140px;
+    }
+
+    /* Sidebar + main content alignment */
+    .main-content {
+      margin-left: 220px; /* same as sidebar width */
+      padding: 20px;
+    }
+  </style>
+  <script src="https://unpkg.com/html5-qrcode/minified/html5-qrcode.min.js"></script>
+</head>
+<body>
+
+  {% include 'sidebar.html' %}
+
+  <!-- Floating Flash Messages -->
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <div id="flash-container">
+        {% for category, message in messages %}
+          <div class="flash-message {{ category }}">
+            {{ message }}
+            <span class="close" onclick="this.parentElement.style.display='none'">×</span>
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
+
+  <!-- Main Content -->
+  <div class="main-content">
+    <div class="header">
+      <div>
+        <h2>Welcome, {{ student.full_name }}</h2>
+        <p>Student ID: {{ student.school_id }}</p>
+        <p>Grade Level: {{ student.grade_level }} | Strand: {{ student.strand }}</p>
+      </div>
+      <div class="balance">
+        <p>Balance: ₱{{ student.balance }}</p>
+      </div>
     </div>
 
-    <!-- Main Content -->
-    <main style="flex:1; padding:20px;">
-        <!-- Student Info -->
-        <section style="margin-bottom:20px;">
-            <h2>Student Dashboard</h2>
-            <p><strong>Name:</strong> {{ student.full_name }}</p>
-            <p><strong>School ID:</strong> {{ student.school_id }}</p>
-            <p><strong>Year Level:</strong> {{ student.grade_level }}</p>
-            <p><strong>Strand:</strong> {{ student.strand }}</p>
-            <p><strong>Balance:</strong> ₱{{ student.balance }}</p>
-            <a href="{{ url_for('topup') }}" style="background:#007bff; color:white; padding:8px 12px; border-radius:4px; text-decoration:none;">Top-Up</a>
-        </section>
+    <!-- Account Actions -->
+    <div class="center-section">
+      <h3>Account Actions</h3>
+      <div class="button-grid">
+        <button onclick="openGenerateQr()" class="btn btn-primary">Generate QR</button>
+        <button onclick="openModal('topupModal')" class="btn btn-success">GCash Top-Up</button>
+        <button onclick="openModal('scanQrModal')" class="btn btn-secondary">Scan Staff QR</button>
+        <button onclick="openModal('historyModal')" class="btn btn-secondary">Transaction History</button>
+      </div>
+    </div>
+  </div>
 
-        <hr>
-
-        <!-- Transaction History -->
-        <section>
-            <h3>Transaction History</h3>
-            <style>
-                .txn-table { width:100%; border-collapse:collapse; font-size:14px; border:1px solid #ccc; }
-                .txn-table th { padding:10px; text-align:left; background:#007bff; color:white; }
-                .txn-table td { padding:8px; }
-                .txn-table tr:nth-child(even) { background-color:#f9f9f9; }
-                .txn-table tr:nth-child(odd) { background-color:#ffffff; }
-            </style>
-            <table class="txn-table">
-                <thead>
-                    <tr>
-                        <th>Type</th>
-                        <th>Date</th>
-                        <th>Amount</th>
-                        <th>Performed By</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for txn in history %}
-                    <tr>
-                        <td>
-                            {% if txn.txn_type == 'Top-Up' %}
-                                <span style="color:green; font-weight:bold;">{{ txn.txn_type }}</span>
-                            {% else %}
-                                <span style="color:red; font-weight:bold;">{{ txn.txn_type }}</span>
-                            {% endif %}
-                        </td>
-                        <td>{{ txn.created_at }}</td>
-                        <td>₱{{ txn.amount }}</td>
-                        <td>{{ txn.performed_by }}</td>
-                    </tr>
-                    {% else %}
-                    <tr>
-                        <td colspan="4" style="text-align:center; color:#888;">No transactions yet.</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </section>
-    </main>
-</div>
-
-<!-- 🔹 Modals -->
-
-<!-- Generate QR Modal -->
-<div id="generateQRModal" class="modal">
+  <!-- Modals -->
+<div id="generateQrModal" class="modal">
   <div class="modal-content">
-    <span class="close" onclick="closeModal('generateQRModal')">&times;</span>
-    <h3>Generated QR</h3>
-    <img id="qrImage" src="" alt="QR Code">
+    <span class="close" onclick="closeModal('generateQrModal')">&times;</span>
+    <img id="qrImage" src="" alt="QR Code" style="width:100%; height:auto;">
   </div>
 </div>
 
-<!-- Fixed QR Modal -->
-<div id="fixedQRModal" class="modal">
-  <div class="modal-content">
-    <span class="close" onclick="closeModal('fixedQRModal')">&times;</span>
-    <h3>Fixed QR</h3>
-    <img id="fixedQrImage" src="" alt="Fixed QR">
-    <br><br>
-    <a id="downloadFixedQR" href="{{ url_for('fixed_qr') }}" download="fixed_qr.jpg" 
-       style="background:#28a745; color:white; padding:8px 12px; border-radius:4px; text-decoration:none;">
-       Download as JPG
-    </a>
-  </div>
-</div>
 
-<!-- Reset Password Modal -->
-<div id="resetPasswordModal" class="modal">
+
+<!-- Top-Up Modal -->
+<div id="topupModal" class="modal">
   <div class="modal-content">
-    <span class="close" onclick="closeModal('resetPasswordModal')">&times;</span>
-    <h3>Reset Password</h3>
-    <a href="{{ url_for('reset_password_student') }}" 
-       style="background:#007bff; color:white; padding:8px 12px; border-radius:4px; text-decoration:none;">
-       Go to Reset Password
-    </a>
-  </div>
-</div>
-{% endblock %}
+    <span class="close" onclick="closeModal('topupModal')">&times;</span>
+    <h3>GCash Top-Up</h3>
+    <form action="{{ url_for('submit_topup') }}" method="POST" enctype="multipart/form-data">
+  <label>GCash Number:</label>
+  <p>09756739146</p>
+
+  <label>GCash Owner:</label>
+  <p>Sample Owner Name</p>
+
+  <label>Reference Number:</label>
+  <input type="text" name="reference_number" required><br>
+
+  <label>Amount:</label>
+  <input type="number" name="amount" step="0.01" required><br>
+
+
+  <label>Upload Screenshot:</label>
+  <input type="file" name="proof" accept="image/*" required>
+
+  <p class="instructions">
+    ⚠️ If the uploaded screenshot does not match the GCash record, approval of your top-up may be delayed.
+  </p>
+
+  <button type="submit">Submit Top-Up</button>
+</form>
+
+
+    <script>
+function openModal(id) {
+  document.getElementById(id).style.display = "block";
+}
+
+function closeModal(id) {
+  document.getElementById(id).style.display = "none";
+}
+
+function openGenerateQr() {
+  const qrImg = document.getElementById("qrImage");
+  // reload QR each time
+  qrImg.src = "{{ url_for('generate_qr') }}" + "?t=" + new Date().getTime();
+  openModal('generateQrModal');
+}
+</script>
+
+
+</body>
+</html>
