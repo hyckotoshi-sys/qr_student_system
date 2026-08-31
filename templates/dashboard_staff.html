@@ -1,80 +1,460 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Canteen Staff Dashboard</title>
-    <script src="https://unpkg.com/html5-qrcode"></script>
+  <title>Staff Dashboard</title>
+  <style>
+    body { font-family: Arial, sans-serif; background:#f9fafb; margin:0; padding:20px; }
+    h2 { color:#1E3A8A; }
+    .card { background:#fff; padding:20px; border-radius:8px; box-shadow:0 2px 6px rgba(0,0,0,0.1); margin-bottom:20px; }
+    table { border-collapse:collapse; width:100%; margin-top:10px; }
+    table th, table td { border:1px solid #d1d5db; padding:8px; text-align:center; }
+    table th { background:#f3f4f6; color:#374151; }
+    table tr:nth-child(even) { background:#f9fafb; }
+
+    /* Summary Cards */
+    .summary-cards { display:flex; gap:20px; margin-bottom:20px; }
+    .summary-card { flex:1; color:#fff; text-align:center; border-radius:8px; padding:15px; }
+    .summary-card.blue { background:#2563eb; }
+    .summary-card.green { background:#22c55e; }
+    .summary-card.orange { background:#f59e0b; }
+    .summary-card h4 { margin:0; font-size:16px; }
+    .summary-card p { font-size:20px; font-weight:bold; margin:5px 0 0; }
+
+    /* Charts Grid */
+    .charts-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:20px; }
+    .charts-grid .card { text-align:center; }
+    canvas { width:100% !important; height:220px !important; margin:0 auto; display:block; }
+
+    /* Modals */
+    .modal { display:none; position:fixed; z-index:3000; left:0; top:0; width:100%; height:100%; background:rgba(0,0,0,0.5); }
+    .modal-content { background:#fff; margin:5% auto; padding:20px; border-radius:8px; width:80%; }
+    .modal .close { float:right; font-size:24px; cursor:pointer; }
+
+    /* Flash Messages */
+    #flash-container { position:fixed; top:20px; right:20px; z-index:4000; }
+    .flash-message { padding:12px 20px; margin-bottom:10px; border-radius:6px; font-weight:bold; color:#fff;
+      box-shadow:0 2px 6px rgba(0,0,0,0.2); opacity:1; transition:opacity 0.5s ease; min-width:220px; }
+    .flash-message.success { background:#22c55e; }
+    .flash-message.error { background:#dc2626; }
+    .flash-message.info { background:#2563eb; }
+  </style>
+
+  <!-- External libraries -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://unpkg.com/html5-qrcode/html5-qrcode.min.js"></script>
+
+
+
 </head>
 <body>
-    <h2>Welcome, Canteen Staff</h2>
 
-    <!-- Scan Student QR -->
-    <h3>Scan Student QR</h3>
-    <div id="reader" style="width:300px"></div>
-    <form id="scanForm" action="/scan_qr" method="POST">
-        <input type="hidden" name="student_id" id="student_id">
-        <input type="number" name="amount" placeholder="Amount" required>
-        <button type="submit">Process Payment</button>
+<h2>Welcome, {{ staff.full_name }}</h2>
+
+<div class="card">
+  <p>Email: {{ staff.email }}</p>
+  <p>Contact: {{ staff.contact_number }}</p>
+  <p>Joined: {{ staff.created_at }}</p>
+</div>
+
+<!-- Today’s Transactions -->
+<div class="summary-card blue" onclick="toggleTable('transactionsTable')">
+  <h4>Today’s Transactions</h4>
+  <p>₱{{ todays_total }}</p>
+</div>
+<div id="transactionsTable" class="summary-table" style="display:none;">
+  <table>
+    <tr><th>ID</th><th>Student/Customer</th><th>Amount</th><th>Status</th></tr>
+    {% for txn in todays_transactions %}
+      <tr>
+        <td>{{ txn.transaction_id }}</td>
+        <td>{{ txn.student_name or txn.customer_name or "Visitor/Personnel" }}</td>
+        <td>₱{{ txn.amount }}</td>
+        <td>{{ txn.status }}</td>
+      </tr>
+    {% endfor %}
+  </table>
+</div>
+
+
+<!-- Total Sales -->
+<div class="summary-card green" onclick="toggleTable('salesTable')">
+  <h4>Total Sales</h4>
+  <p>₱{{ total_sales }}</p>
+</div>
+<div id="salesTable" class="summary-table" style="display:none;">
+  <table>
+    <tr><th>Date</th><th>Amount</th><th>Type</th></tr>
+    {% for txn in staff_transactions %}
+      <tr>
+        <td>{{ txn.created_at }}</td>
+        <td>₱{{ txn.amount }}</td>
+        <td>
+          {% if txn.student_name %}
+            Registered ({{ txn.student_name }})
+          {% elif txn.customer_name %}
+            Unregistered ({{ txn.customer_name }})
+          {% else %}
+            Visitor/Personnel
+          {% endif %}
+        </td>
+      </tr>
+    {% endfor %}
+  </table>
+</div>
+
+<!-- Manual Purchase (Visitor/Personnel) -->
+<div class="modal" id="manualPurchaseModal">
+  <div class="modal-content">
+    <h3>Manual Purchase (Visitor/Personnel)</h3>
+    <form action="/staff_manual_purchase" method="POST">
+      
+      <!-- Customer Name -->
+      <label for="customer_name">Customer Name:</label>
+      <input type="text" id="customer_name" name="customer_name" required class="border p-2 w-full mb-2">
+
+      <!-- Amount -->
+      <label for="amount">Amount:</label>
+      <input type="number" id="amount" name="amount" step="0.01" required class="border p-2 w-full mb-2">
+
+      <!-- Payment Mode -->
+      <label for="payment_mode">Payment Mode:</label>
+      <select id="payment_mode" name="payment_mode" required class="border p-2 w-full mb-2">
+        <option value="cash">Cash</option>
+        <option value="gcash">GCash</option>
+        <option value="bank">Bank</option>
+      </select>
+
+      <!-- Submit -->
+      <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded">
+        Record Transaction
+      </button>
     </form>
+  </div>
+</div>
 
-    <script>
-        function onScanSuccess(decodedText, decodedResult) {
-            document.getElementById("student_id").value = decodedText;
-            alert("Student QR scanned: " + decodedText);
+
+
+
+<!-- Action Buttons -->
+<div class="card">
+  <h3>Quick Actions</h3>
+  <button onclick="openModal('scanQrModal')">Scan QR</button>
+  <button onclick="openModal('fixedQrModal')">Fixed QR</button>
+  <button onclick="openModal('searchStudentModal')">Search Student ID</button>
+  <button onclick="openModal('unregisteredModal')">Manual Purchase (Unregistered)</button>
+  <button onclick="openModal('visitorModal')">Manual Purchase (Visitor/Personnel)</button>
+</div>
+
+<!-- Charts -->
+<div class="charts-grid">
+  <div class="card">
+    <h3>Transaction Trends</h3>
+    <canvas id="staffTxnChart"></canvas>
+  </div>
+  <div class="card">
+    <h3>Totals Overview</h3>
+    <canvas id="staffTotalsChart"></canvas>
+  </div>
+</div>
+
+<!-- Recent Transactions -->
+<div class="card">
+  <h3>Recent Transactions</h3>
+  <table id="transactionsTable">
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Amount</th>
+        <th>Type</th>
+        <th>Status</th>
+        <th>Date</th>
+      </tr>
+    </thead>
+    <tbody>
+    </tbody>
+  </table>
+</div>
+
+<!-- Scan QR Modal -->
+<div id="scanQrModal" class="modal">
+  <div class="modal-content">
+    <span class="close" onclick="closeModal('scanQrModal')">&times;</span>
+    <h3>Scan QR</h3>
+    <div id="qr-reader" style="width:100%"></div>
+    <div id="qr-result"></div>
+    <label>Purchase Amount:</label>
+    <input type="number" id="qrAmount" placeholder="Enter amount" style="width:100%; padding:8px; margin:10px 0;">
+    <select id="qrMode"><option>Cash</option><option>GCash</option></select>
+    <button onclick="handleQrTransaction()">Record Transaction</button>
+  </div>
+</div>
+
+<!-- Fixed QR Modal -->
+<div id="fixedQrModal" class="modal">
+  <div class="modal-content">
+    <span class="close" onclick="closeModal('fixedQrModal')">&times;</span>
+    <h3>Fixed QR</h3>
+    <img id="fixedQrImage" src="/fixed_qr/{{ staff_id }}" alt="Fixed QR" style="width:200px;">
+    <button onclick="downloadFixedQr()">Download as JPG</button>
+
+  </div>
+</div>
+
+<!-- Search Student Modal -->
+<div id="searchStudentModal" class="modal">
+  <div class="modal-content">
+    <span class="close" onclick="closeModal('searchStudentModal')">&times;</span>
+    <h3>Search Student</h3>
+    <!-- ID field auto-filled when you click a student row -->
+    <input type="text" id="searchStudentId" placeholder="Enter Student ID">
+    
+    <!-- Scrollable list of all students -->
+    <div id="studentList" style="max-height:300px; overflow-y:auto; margin-top:10px;"></div>
+    
+    <!-- Amount to deduct -->
+    <input type="number" id="searchStudentAmount" placeholder="Amount">
+    
+    <button onclick="handleSearchStudent()">Record Transaction</button>
+  </div>
+</div>
+
+
+
+
+<!-- Unregistered Student Modal -->
+<div id="unregisteredModal" class="modal">
+  <div class="modal-content">
+    <span class="close" onclick="closeModal('unregisteredModal')">&times;</span>
+    <h3>Manual Purchase (Unregistered Student)</h3>
+    <p>Staff: {{ staff.full_name }}</p>
+    <input type="text" id="unregisteredId" placeholder="Enter School ID">
+    <input type="number" id="unregisteredAmount" placeholder="Amount">
+    <select id="unregisteredMode"><option>Cash</option><option>GCash</option></select>
+    <button onclick="handleUnregistered()">Record Transaction</button>
+  </div>
+</div>
+
+<!-- Visitor/Personnel Modal -->
+<div id="visitorModal" class="modal">
+  <div class="modal-content">
+    <span class="close" onclick="closeModal('visitorModal')">&times;</span>
+    <h3>Manual Purchase (Visitor/Personnel)</h3>
+    <p>Staff: {{ staff.full_name }}</p>
+    <input type="number" id="visitorAmount" placeholder="Amount">
+    <select id="visitorMode"><option>Cash</option><option>GCash</option></select>
+    <button onclick="handleVisitor()">Record Transaction</button>
+  </div>
+</div>
+
+<script>
+// Modal controls
+function openModal(id) {
+  document.getElementById(id).style.display = "block";
+  if (id === "scanQrModal") startQrScanner();
+}
+function closeModal(id) { document.getElementById(id).style.display = "none"; }
+
+// Chart.js setup (unchanged)
+const staffTxnCtx = document.getElementById('staffTxnChart').getContext('2d');
+new Chart(staffTxnCtx, {
+  type: 'bar',
+  data: {
+    labels: {{ txn_dates|tojson }},
+    datasets: [
+      { label: 'Top-Ups', data: {{ txn_topups|tojson }}, backgroundColor: '#22c55e' },
+      { label: 'Purchases', data: {{ txn_purchases|tojson }}, backgroundColor: '#2563eb' }
+    ]
+  }
+});
+
+const staffTotalsCtx = document.getElementById('staffTotalsChart').getContext('2d');
+new Chart(staffTotalsCtx, {
+  type: 'line',
+  data: {
+    labels: {{ totals_dates|tojson }},
+    datasets: [
+      { label: 'Manual', data: {{ manual_totals|tojson }}, borderColor: '#6b7280', fill: false },
+      { label: 'Cashless', data: {{ cashless_totals|tojson }}, borderColor: '#2563eb', fill: false },
+      { label: 'Others', data: {{ other_totals|tojson }}, borderColor: '#f59e0b', fill: false }
+    ]
+  },
+  options: {}
+});
+
+function toggleTable(id) {
+  const table = document.getElementById(id);
+  table.style.display = (table.style.display === "none") ? "block" : "none";
+}
+
+
+// DRY Transaction Recording Logic
+function recordTransaction(type, payload, modalId) {
+  fetch(`/staff_record_transaction`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(Object.assign({ type: type }, payload))
+  })
+  .then(res => res.json())
+  .then(data => {
+    if (data.success) {
+      showFlash("Transaction recorded successfully!", "success");
+      closeModal(modalId);
+      // Append transaction row live
+      const table = document.getElementById("transactionsTable");
+      const row = document.createElement("tr");
+      row.innerHTML = `
+        <td>${data.transaction.student_name || data.transaction.customer_name || "Visitor"}</td>
+        <td>₱${data.transaction.amount}</td>
+        <td>${data.transaction.type}</td>
+        <td>${data.transaction.status}</td>
+        <td>${data.transaction.created_at}</td>
+      `;
+      table.appendChild(row);
+    } else {
+      showFlash(data.message, "error");
+    }
+  });
+}
+
+// Load all students when modal opens
+function loadStudents() {
+  fetch("/staff_students")
+    .then(res => res.json())
+    .then(data => {
+      if (data.success) {
+        const listDiv = document.getElementById("studentList");
+        listDiv.innerHTML = "<table><tr><th>Name</th><th>ID</th><th>Grade</th><th>Strand</th></tr></table>";
+        const table = listDiv.querySelector("table");
+        
+        data.students.forEach(s => {
+          const row = document.createElement("tr");
+          row.innerHTML = `<td>${s.full_name}</td><td>${s.school_id}</td><td>${s.grade_level}</td><td>${s.strand}</td>`;
+          
+          // When staff clicks a row, auto-fill the ID field
+          row.onclick = () => {
+            document.getElementById("searchStudentId").value = s.school_id;
+            showFlash(`Selected: ${s.full_name}`, "info");
+          };
+          
+          table.appendChild(row);
+        });
+      } else {
+        showFlash("Failed to load students.", "error");
+      }
+    })
+    .catch(err => {
+      console.error("Error loading students:", err);
+      showFlash("Error loading students.", "error");
+    });
+}
+
+// Hook into modal open
+function openModal(id) {
+  document.getElementById(id).style.display = "block";
+  if (id === "scanQrModal") startQrScanner();
+  if (id === "searchStudentModal") loadStudents();
+}
+
+// Deduct balance directly (no Cash/GCash mode)
+function handleSearchStudent() {
+  recordTransaction("student", {
+    student_id: document.getElementById("searchStudentId").value,
+    amount: parseFloat(document.getElementById("searchStudentAmount").value) || 0,
+    staff: "{{ staff.full_name }}"
+  }, "searchStudentModal");
+}
+
+
+function handleUnregistered() {
+  recordTransaction("unregistered", {
+    student_id: document.getElementById("unregisteredId").value,
+    amount: parseFloat(document.getElementById("unregisteredAmount").value) || 0,
+    mode: document.getElementById("unregisteredMode").value,
+    staff: "{{ staff.full_name }}"
+  }, "unregisteredModal");
+}
+
+function downloadFixedQr() {
+  window.location.href = "/download_fixed_qr/{{ staff_id }}";
+}
+
+
+function handleVisitor() {
+  recordTransaction("visitor", {
+    amount: parseFloat(document.getElementById("visitorAmount").value) || 0,
+    mode: document.getElementById("visitorMode").value,
+    staff: "{{ staff.full_name }}"
+  }, "visitorModal");
+}
+
+function handleQrTransaction() {
+  if (!window.scannedQrCode) {
+    showFlash("No QR code scanned yet.", "error");
+    return;
+  }
+  recordTransaction("qr", {
+    qr_code: window.scannedQrCode,
+    amount: parseFloat(document.getElementById("qrAmount").value) || 0,
+    mode: document.getElementById("qrMode").value,
+    staff: "{{ staff.full_name }}"
+  }, "scanQrModal");
+}
+
+// QR Scanner (fixed)
+function startQrScanner() {
+  // Clear old scanner UI
+  document.getElementById("qr-reader").innerHTML = "";
+
+  const qrScanner = new Html5QrcodeScanner("qr-reader", {
+    fps: 10,
+    qrbox: 250
+  });
+
+  qrScanner.render(qrCodeMessage => {
+    document.getElementById("qr-result").innerText = "Scanned: " + qrCodeMessage;
+    window.scannedQrCode = qrCodeMessage;
+  }, errorMessage => {
+    console.log("QR scan error:", errorMessage);
+  });
+}
+
+  const link = document.createElement("a");
+  link.href = document.getElementById("fixedQrImage").src;
+  link.download = "fixed_qr.jpg";
+  link.click();
+
+
+// Search Student fetch + populate
+document.getElementById("searchStudentId").addEventListener("blur", function() {
+  const query = this.value;
+  if (query.length > 0) {
+    fetch(`/staff_search_student/${query}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          document.getElementById("studentDetails").innerText = `Found: ${data.student.full_name}`;
+          showFlash(`Found: ${data.student.full_name}`, "info");
+        } else {
+          showFlash("Student not found", "error");
         }
-        const html5QrCode = new Html5Qrcode("reader");
-        html5QrCode.start(
-            { facingMode: "environment" }, 
-            { fps: 10, qrbox: 250 },
-            onScanSuccess
-        );
-    </script>
+      });
+  }
+});
 
-    <!-- Manual Input for Registered Students -->
-    <h3>Manual Input (Registered Student)</h3>
-    <form action="/staff_transaction" method="POST">
-        <input type="text" name="school_id" placeholder="Enter Student ID" required>
-        <input type="number" name="amount" placeholder="Amount" required>
-        <button type="submit">Process Payment</button>
-    </form>
-
-    <!-- Manual Input for Unregistered Students -->
-    <h3>Manual Input (Unregistered Student)</h3>
-    <form action="/staff_unregistered_transaction" method="POST">
-        <input type="text" name="school_id" placeholder="Enter School ID" required>
-        <input type="number" name="amount" placeholder="Amount Paid" required>
-        <button type="submit">Record Transaction</button>
-    </form>
-
-    <!-- Generate Staff QR -->
-    <h3>Generate Staff QR</h3>
-    <img src="{{ url_for('generate_staff_qr') }}" alt="Staff QR Code">
-
-    <!-- Transaction History -->
-    <h3>Registered Transactions</h3>
-    <table border="1">
-        <tr><th>ID</th><th>Student</th><th>Amount</th><th>Status</th><th>Timestamp</th></tr>
-        {% for txn in registered_txns %}
-        <tr>
-            <td>{{ txn.transaction_id }}</td>
-            <td>{{ txn.student_id }}</td>
-            <td>{{ txn.amount }}</td>
-            <td>{{ txn.status }}</td>
-            <td>{{ txn.timestamp }}</td>
-        </tr>
-        {% endfor %}
-    </table>
-
-    <h3>Unregistered Transactions</h3>
-    <table border="1">
-        <tr><th>ID</th><th>School ID</th><th>Amount</th><th>Timestamp</th></tr>
-        {% for txn in unregistered_txns %}
-        <tr>
-            <td>{{ txn.id }}</td>
-            <td>{{ txn.school_id }}</td>
-            <td>{{ txn.amount }}</td>
-            <td>{{ txn.timestamp }}</td>
-        </tr>
-        {% endfor %}
-    </table>
+// Flash Messages (5s float)
+function showFlash(message, category) {
+  let container = document.getElementById("flash-container");
+  if (!container) {
+    container = document.createElement("div");
+    container.id = "flash-container";
+    document.body.appendChild(container);
+  }
+  const div = document.createElement("div");
+  div.className = `flash-message ${category}`;
+  div.innerHTML = message;
+  container.appendChild(div);
+  setTimeout(() => div.remove(), 5000); // ✅ 5 seconds
+}
+</script>
 </body>
 </html>
