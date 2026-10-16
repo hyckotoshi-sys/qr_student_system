@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Profile</title>
+</head>
+<body>
+
+  {% include 'sidebar.html' %}
+
+  <div class="main-content">
+    <h2>My Profile</h2>
+    <p>Name: {{ student.full_name }}</p>
+    <p>School ID: {{ student.school_id }}</p>
+    <p>Email: {{ student.email }}</p>
+    <p>Grade Level: {{ student.grade_level }}</p>
+    <p>Strand: {{ student.strand }}</p>
+
+    <div class="profile-section">
+      <h3>My QR Code</h3>
+      <!-- Fixed QR Modal -->
+<div id="fixedQrModal" class="modal">
+  <div class="modal-content">
+    <span class="close" onclick="closeModal('fixedQrModal')">&times;</span>
+    <h3 class="text-lg font-semibold text-pink-700">Enter PIN to View Fixed QR</h3>
+    <form action="{{ url_for('fixed_qr') }}" method="POST" class="mt-4 space-y-4">
+      <input type="password" name="pin" maxlength="4" required 
+             class="w-full border rounded p-2 text-center tracking-widest">
+      <button type="submit" class="bg-pink-600 hover:bg-pink-700 text-white px-4 py-2 rounded-lg shadow">
+        Show QR
+      </button>
+    </form>
+    <a href="{{ url_for('download_fixed_qr') }}" 
+       class="mt-4 inline-block bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg shadow">
+       Download Fixed QR
+    </a>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</body>
+</html>

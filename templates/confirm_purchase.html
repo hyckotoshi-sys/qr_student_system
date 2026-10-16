@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Confirm Purchase</title>
+</head>
+<body>
+  <h2>Confirm Purchase</h2>
+  <p><strong>Name:</strong> {{ student.full_name }}</p>
+  <p><strong>School ID:</strong> {{ student.school_id }}</p>
+  <p><strong>Grade Level:</strong> {{ student.grade_level }}</p>
+  <p><strong>Strand:</strong> {{ student.strand }}</p>
+  <p><strong>Balance:</strong> ₱{{ student.balance }}</p>
+
+  <form method="POST" action="{{ url_for('process_purchase', student_id=student.student_id) }}">
+    <label>Amount:</label>
+    <input type="number" name="amount" required>
+    <button type="submit">Confirm Purchase</button>
+  </form>
+</body>
+</html>

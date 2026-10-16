@@ -1,24 +1,69 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+  <meta charset="UTF-8">
   <title>Student Sign In</title>
-  <style>
-    body { font-family:Arial, sans-serif; background:#f9fafb; padding:40px; }
-    .card { background:#fff; padding:20px; border-radius:8px; box-shadow:0 2px 6px rgba(0,0,0,0.1); width:300px; margin:auto; }
-    .btn { display:block; margin-top:15px; padding:10px; text-align:center; border-radius:5px; text-decoration:none; }
-    .btn-primary { background:#2563eb; color:#fff; }
-    .btn-secondary { background:#6b7280; color:#fff; }
-  </style>
+  <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body>
-  <div class="card">
-    <h2>Student Login</h2>
-    <form action="{{ url_for('signin_student') }}" method="POST">
-      <input type="email" name="email" placeholder="Email" required style="width:100%; padding:8px; margin:10px 0;">
-      <input type="password" name="password" placeholder="Password" required style="width:100%; padding:8px; margin:10px 0;">
-      <button type="submit" class="btn btn-primary">Login</button>
+<body class="bg-gradient-to-r from-purple-50 to-pink-50 min-h-screen flex items-center justify-center">
+
+  <!-- Sign In Card -->
+  <div class="bg-white shadow-xl rounded-xl w-full max-w-md p-8 relative z-10">
+    <!-- Logo watermark (behind form, not blocking clicks) -->
+    <div class="absolute inset-0 opacity-5 bg-center bg-no-repeat pointer-events-none"
+         style="background-image: url('{{ url_for('static', filename='images/bambini_logo.png') }}'); background-size: 250px;">
+    </div>
+
+    <!-- Logo -->
+    <div class="flex justify-center mb-4">
+      <img src="{{ url_for('static', filename='images/bambini_logo.png') }}" alt="Bambini Logo" class="w-24 rounded-full shadow-md">
+    </div>
+
+    <!-- Flash messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <ul class="mb-4">
+          {% for category, message in messages %}
+            <li class="text-red-600 text-sm">{{ message }}</li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+    {% endwith %}
+
+    <h2 class="text-2xl font-bold text-center text-purple-700 mb-6"> Student Sign In</h2>
+
+    <form action="{{ url_for('signin_student') }}" method="POST" class="space-y-4 relative z-10">
+      <!-- Email -->
+      <div>
+        <label for="email" class="block text-sm font-medium text-gray-700">Email</label>
+        <input type="email" id="email" name="email" required
+               class="w-full border rounded-lg p-2 focus:ring-2 focus:ring-purple-400 focus:outline-none">
+      </div>
+
+      <!-- Password -->
+      <div>
+        <label for="password" class="block text-sm font-medium text-gray-700">Password</label>
+        <input type="password" id="password" name="password" required
+               class="w-full border rounded-lg p-2 focus:ring-2 focus:ring-purple-400 focus:outline-none">
+      </div>
+
+      <!-- Submit -->
+      <button type="submit"
+              class="w-full bg-gradient-to-r from-purple-500 to-pink-500 text-white py-2 rounded-lg shadow-md hover:from-purple-600 hover:to-pink-600 transition">
+        Login
+      </button>
     </form>
-    <a href="{{ url_for('signup_student') }}" class="btn btn-secondary">No account? Sign Up</a>
+
+    <!-- Forgot Password link -->
+    <p class="text-center text-sm mt-4">
+      <a href="{{ url_for('forgot_password_student') }}" class="text-blue-600 hover:underline">Forgot Password?</a>
+    </p>
+
+    <!-- Sign Up link -->
+    <p class="text-center text-sm mt-2">
+      No account?
+      <a href="{{ url_for('signup_student') }}" class="text-purple-600 hover:underline">Sign Up</a>
+    </p>
   </div>
 </body>
 </html>

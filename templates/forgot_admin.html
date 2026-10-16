@@ -1,30 +1,81 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+  <meta charset="UTF-8">
   <title>Admin Forgot Password</title>
+  <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body>
-  <h2>Reset Admin Password</h2>
-  <form action="{{ url_for('forgot_admin') }}" method="POST">
-    <label for="email">Email Address:</label>
-    <input type="email" id="email" name="email" required><br>
+<body class="bg-gradient-to-r from-purple-50 to-pink-50 min-h-screen flex items-center justify-center">
 
-    <label for="security_q1">Security Question 1:</label>
-    <input type="text" id="security_q1" name="security_q1" required><br>
-    <input type="text" id="security_a1" name="security_a1" required><br>
+  <!-- Forgot Card -->
+  <div class="bg-white shadow-xl rounded-xl w-full max-w-md p-8 relative z-10">
+    <!-- Logo watermark -->
+    <div class="absolute inset-0 opacity-5 bg-center bg-no-repeat pointer-events-none"
+         style="background-image: url('{{ url_for('static', filename='images/fcd_logo.png') }}'); background-size: 250px;">
+    </div>
 
-    <label for="security_q2">Security Question 2:</label>
-    <input type="text" id="security_q2" name="security_q2" required><br>
-    <input type="text" id="security_a2" name="security_a2" required><br>
+    <!-- Logo -->
+    <div class="flex justify-center mb-4">
+      <img src="{{ url_for('static', filename='images/fcd_logo.png') }}" alt="FCD Logo" class="w-20 rounded-full shadow-md">
+    </div>
 
-    <label for="security_q3">Security Question 3:</label>
-    <input type="text" id="security_q3" name="security_q3" required><br>
-    <input type="text" id="security_a3" name="security_a3" required><br>
+    <h2 class="text-2xl font-bold text-center text-purple-700 mb-6">🔑 Admin Forgot Password</h2>
 
-    <label for="new_password">New Password:</label>
-    <input type="password" id="new_password" name="new_password" required><br>
+    <form action="{{ url_for('forgot_admin') }}" method="POST" class="space-y-4 relative z-10">
+      <!-- Email -->
+      <div>
+        <label for="email" class="block text-sm font-medium text-gray-700">Email Address</label>
+        <input type="email" id="email" name="email" required
+               class="w-full border rounded-lg p-2 focus:ring-2 focus:ring-purple-400 focus:outline-none">
+      </div>
 
-    <button type="submit">Reset Password</button>
-  </form>
+      <!-- Security Question 1 -->
+      <div>
+        <label for="security_q1" class="block text-sm font-medium text-gray-700">Security Question 1</label>
+        <input type="text" id="security_q1" name="security_q1" required
+               class="w-full border rounded-lg p-2 mt-2 focus:ring-2 focus:ring-purple-400 focus:outline-none">
+        <input type="text" id="security_a1" name="security_a1" placeholder="Answer" required
+               class="w-full border rounded-lg p-2 mt-2 focus:ring-2 focus:ring-purple-400 focus:outline-none">
+      </div>
+
+      <!-- Security Question 2 -->
+      <div>
+        <label for="security_q2" class="block text-sm font-medium text-gray-700">Security Question 2</label>
+        <input type="text" id="security_q2" name="security_q2" required
+               class="w-full border rounded-lg p-2 mt-2 focus:ring-2 focus:ring-purple-400 focus:outline-none">
+        <input type="text" id="security_a2" name="security_a2" placeholder="Answer" required
+               class="w-full border rounded-lg p-2 mt-2 focus:ring-2 focus:ring-purple-400 focus:outline-none">
+      </div>
+
+      <!-- Security Question 3 -->
+      <div>
+        <label for="security_q3" class="block text-sm font-medium text-gray-700">Security Question 3</label>
+        <input type="text" id="security_q3" name="security_q3" required
+               class="w-full border rounded-lg p-2 mt-2 focus:ring-2 focus:ring-purple-400 focus:outline-none">
+        <input type="text" id="security_a3" name="security_a3" placeholder="Answer" required
+               class="w-full border rounded-lg p-2 mt-2 focus:ring-2 focus:ring-purple-400 focus:outline-none">
+      </div>
+
+      <!-- New Password -->
+      <div>
+        <label for="new_password" class="block text-sm font-medium text-gray-700">New Password</label>
+        <input type="password" id="new_password" name="new_password" required
+               class="w-full border rounded-lg p-2 focus:ring-2 focus:ring-purple-400 focus:outline-none">
+        <small class="text-gray-500">Must be at least 8 characters, include uppercase, lowercase, number, and special character.</small>
+      </div>
+
+      <!-- Submit -->
+      <button type="submit"
+              class="w-full bg-gradient-to-r from-purple-500 to-pink-500 text-white py-2 rounded-lg shadow-md hover:from-purple-600 hover:to-pink-600 transition">
+        Reset Password
+      </button>
+    </form>
+
+    <!-- Link to Signin -->
+    <p class="text-center text-sm text-gray-600 mt-4">
+      Remembered your password?
+      <a href="{{ url_for('signin_admin') }}" class="text-purple-600 hover:underline">Sign in here</a>
+    </p>
+  </div>
 </body>
 </html>

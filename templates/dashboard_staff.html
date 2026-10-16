@@ -1,93 +1,712 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+  <meta charset="UTF-8">
   <title>Staff Dashboard</title>
-  <style>
-    body { font-family: Arial, sans-serif; background:#f9fafb; margin:0; padding:20px; }
-    h2 { color:#1E3A8A; }
-    .card { background:#fff; padding:20px; border-radius:8px; box-shadow:0 2px 6px rgba(0,0,0,0.1); margin-bottom:20px; }
-    table { border-collapse:collapse; width:100%; margin-top:10px; }
-    table th, table td { border:1px solid #d1d5db; padding:8px; text-align:center; }
-    table th { background:#f3f4f6; color:#374151; }
-    table tr:nth-child(even) { background:#f9fafb; }
-  </style>
+  <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://unpkg.com/html5-qrcode/html5-qrcode.min.js"></script>
 </head>
-<body>
-  <h2>Welcome, {{ staff.full_name }}</h2>
-  <div class="card">
-    <p>Email: {{ staff.email }}</p>
-    <p>Contact: {{ staff.contact_number }}</p>
-    <p>Joined: {{ staff.created_at }}</p>
+
+<body class="min-h-screen bg-gradient-to-r from-green-100 to-teal-50">
+
+<aside class="w-64 h-screen bg-white shadow-lg flex flex-col fixed left-0 top-0">
+  <!-- Logo + Title -->
+  <div class="p-6 text-center border-b">
+    <img src="{{ url_for('static', filename='images/bambini_logo.png') }}" class="w-20 mx-auto opacity-80">
+    <h2 class="text-purple-600 font-bold mt-2">Staff Dashboard</h2>
   </div>
 
-  <div class="card">
-    <h3>Transactions Handled</h3>
-    <table>
-      <tr><th>Student / Customer</th><th>Amount</th><th>Type</th><th>Status</th><th>Date</th></tr>
-      {% for tx in staff_transactions %}
-      <tr>
-        <td>{{ tx.student_name or tx.customer_name }}</td>
-        <td>₱{{ tx.amount }}</td>
-        <td>{{ tx.type }}</td>
-        <td>{{ tx.status }}</td>
-        <td>{{ tx.created_at }}</td>
-      </tr>
-      {% endfor %}
+  <!-- Navigation Links -->
+  <nav class="flex-1 p-4 space-y-2 text-gray-700">
+    <a href="#transactions" class="flex items-center px-4 py-2 rounded hover:bg-purple-100">
+      💵 <span class="ml-2">Transactions</span>
+    </a>
+    <a href="#sales" class="flex items-center px-4 py-2 rounded hover:bg-purple-100">
+      📈 <span class="ml-2">Sales</span>
+    </a>
+    <a href="#charts" class="flex items-center px-4 py-2 rounded hover:bg-purple-100">
+      📊 <span class="ml-2">Charts</span>
+    </a>
+    <a href="#students" class="flex items-center px-4 py-2 rounded hover:bg-purple-100">
+      🎓 <span class="ml-2">Student Search</span>
+    </a>
+    <a href="#meals" class="flex items-center px-4 py-2 rounded hover:bg-purple-100">
+      🍽 <span class="ml-2">Meals Menu</span>
+    </a>
+  </nav>
+
+
+  <!-- Logout -->
+  <div class="p-4 border-t">
+    <button class="w-full px-4 py-2 bg-purple-500 text-white rounded-lg shadow hover:bg-purple-600">
+      Logout
+    </button>
+  </div>
+</aside>
+
+<!-- ✅ Main content shifted right -->
+<main class="ml-64 p-8">
+
+  <!-- Navbar -->
+    <header class="flex justify-between items-center mb-6">
+      <div>
+        <h1 class="text-2xl font-bold text-purple-700">Welcome, {{ staff.full_name }}</h1>
+        <p class="text-gray-600">{{ staff.email }} | {{ staff.contact_number }} | Joined: {{ staff.created_at }}</p>
+      </div>
+      <button class="px-4 py-2 bg-purple-400 text-white rounded">Logout</button>
+    </header>
+<!-- Dashboard Cards Section -->
+<section class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+
+  <!-- Today’s Transactions Card -->
+  <div class="bg-white rounded-xl shadow-lg p-6 border-t-4 border-purple-400 cursor-pointer"
+       onclick="toggleTable('transactionsTable')">
+    <h4 class="text-lg font-semibold text-purple-700">Today’s Transactions</h4>
+    <p class="text-3xl font-bold text-gray-800 mt-2">₱{{ todays_total }}</p>
+    <p class="text-sm text-gray-500 mt-1">Click to view details</p>
+  </div>
+
+  <!-- Transactions Table (hidden until clicked) -->
+  <div id="transactionsTable" class="hidden mt-4 bg-white rounded-lg shadow p-4">
+    <table class="w-full border-collapse text-sm">
+      <thead>
+        <tr class="bg-purple-100 text-purple-900 font-semibold">
+          <th class="px-3 py-2 text-left">ID</th>
+          <th class="px-3 py-2 text-left">Student/Customer</th>
+          <th class="px-3 py-2 text-left">Amount</th>
+          <th class="px-3 py-2 text-left">Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for txn in todays_transactions %}
+        <tr class="odd:bg-purple-50 hover:bg-purple-100">
+          <td class="px-3 py-2">{{ txn.transaction_id }}</td>
+          <td class="px-3 py-2">{{ txn.student_name or txn.customer_name or "Visitor/Personnel" }}</td>
+          <td class="px-3 py-2">₱{{ txn.amount }}</td>
+          <td class="px-3 py-2">{{ txn.status }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
     </table>
   </div>
 
-  <div class="card">
-    <h3>Daily Totals</h3>
-    <table>
-      <tr><th>Date</th><th>Total Amount</th><th>Mode</th><th>Category</th></tr>
-      {% for d in staff_totals %}
-      <tr>
-        <td>{{ d.created_at }}</td>
-        <td>₱{{ d.amount }}</td>
-        <td>{{ d.mode }}</td>
-        <td>{{ d.category }}</td>
-      </tr>
-      {% endfor %}
+  <!-- Total Sales Card -->
+  <div class="bg-white rounded-xl shadow-lg p-6 border-t-4 border-teal-400 cursor-pointer"
+       onclick="toggleTable('salesTable')">
+    <h4 class="text-lg font-semibold text-teal-700">Total Sales</h4>
+    <p class="text-3xl font-bold text-gray-800 mt-2">₱{{ total_sales }}</p>
+    <p class="text-sm text-gray-500 mt-1">Click to view details</p>
+  </div>
+
+  <!-- Sales Table (hidden until clicked) -->
+  <div id="salesTable" class="hidden mt-4 bg-white rounded-lg shadow p-4">
+    <table class="w-full border-collapse text-sm">
+      <thead>
+        <tr class="bg-teal-100 text-teal-900 font-semibold">
+          <th class="px-3 py-2 text-left">Date</th>
+          <th class="px-3 py-2 text-left">Amount</th>
+          <th class="px-3 py-2 text-left">Type</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for txn in staff_transactions %}
+        <tr class="odd:bg-teal-50 hover:bg-teal-100">
+          <td class="px-3 py-2">{{ txn.created_at }}</td>
+          <td class="px-3 py-2">₱{{ txn.amount }}</td>
+          <td class="px-3 py-2">
+            {% if txn.student_name %}
+              Registered ({{ txn.student_name }})
+            {% elif txn.customer_name %}
+              Unregistered ({{ txn.customer_name }})
+            {% else %}
+              Visitor/Personnel
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
     </table>
   </div>
 
-  <!-- Charts -->
-  <div class="card">
-    <h3>Transactions Handled (Daily)</h3>
-    <canvas id="staffTxnChart"></canvas>
+</section>
+<!-- Transactions Table -->
+<div id="transactionsTable" class="hidden mt-6 bg-white rounded-lg shadow-lg p-6">
+  <h3 class="text-xl font-bold text-purple-700 mb-4">Today’s Transactions</h3>
+  <table class="w-full border-collapse text-sm">
+    <thead>
+      <tr class="bg-purple-100 text-purple-900 font-semibold">
+        <th class="px-4 py-2 text-left">Transaction ID</th>
+        <th class="px-4 py-2 text-left">Student/Customer</th>
+        <th class="px-4 py-2 text-left">Amount</th>
+        <th class="px-4 py-2 text-left">Status</th>
+        <th class="px-4 py-2 text-left">Date</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for txn in todays_transactions %}
+      <tr class="odd:bg-purple-50 hover:bg-purple-100 transition">
+        <td class="px-4 py-2">{{ txn.transaction_id }}</td>
+        <td class="px-4 py-2">{{ txn.student_name or txn.customer_name or "Visitor/Personnel" }}</td>
+        <td class="px-4 py-2">₱{{ txn.amount }}</td>
+        <td class="px-4 py-2">{{ txn.status }}</td>
+        <td class="px-4 py-2">{{ txn.created_at }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<!-- Sales Table -->
+<div id="salesTable" class="hidden mt-6 bg-white rounded-lg shadow-lg p-6">
+  <h3 class="text-xl font-bold text-teal-700 mb-4">All Sales</h3>
+  <table class="w-full border-collapse text-sm">
+    <thead>
+      <tr class="bg-teal-100 text-teal-900 font-semibold">
+        <th class="px-4 py-2 text-left">Date</th>
+        <th class="px-4 py-2 text-left">Amount</th>
+        <th class="px-4 py-2 text-left">Type</th>
+        <th class="px-4 py-2 text-left">Handled By</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for txn in staff_transactions %}
+      <tr class="odd:bg-teal-50 hover:bg-teal-100 transition">
+        <td class="px-4 py-2">{{ txn.created_at }}</td>
+        <td class="px-4 py-2">₱{{ txn.amount }}</td>
+        <td class="px-4 py-2">
+          {% if txn.student_name %}
+            Registered ({{ txn.student_name }})
+          {% elif txn.customer_name %}
+            Unregistered ({{ txn.customer_name }})
+          {% else %}
+            Visitor/Personnel
+          {% endif %}
+        </td>
+        <td class="px-4 py-2">{{ staff.full_name }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+<!-- Scan QR Modal -->
+<div id="scanQrModal" class="modal hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+  <div class="bg-white rounded-xl shadow-lg p-6 w-full max-w-lg relative">
+    <span class="absolute top-2 right-4 text-2xl cursor-pointer text-gray-500 hover:text-purple-600"
+          onclick="closeModal('scanQrModal')">&times;</span>
+    <h3 class="text-xl font-bold text-purple-600 mb-4">📷 Scan QR</h3>
+
+    <div id="qr-reader" class="w-full border rounded-lg p-4"></div>
+    <div id="qr-result" class="mt-2 text-gray-700"></div>
+
+    <label class="block mt-4 text-sm font-medium text-gray-700">Purchase Amount:</label>
+    <input type="number" id="qrAmount" placeholder="Enter amount"
+           class="w-full border rounded p-2 mt-2 focus:ring-purple-400 focus:border-purple-400">
+
+    <label class="block mt-4 text-sm font-medium text-gray-700">Payment Mode:</label>
+    <select id="qrMode" class="w-full border rounded p-2 mt-2 focus:ring-purple-400 focus:border-purple-400">
+      <option>Cash</option>
+      <option>GCash</option>
+    </select>
+
+    <button onclick="handleQrTransaction()"
+            class="mt-4 w-full px-4 py-2 bg-purple-500 text-white rounded-lg shadow hover:bg-purple-600">
+      ✅ Record Transaction
+    </button>
+  </div>
+</div>
+
+<!-- Fixed QR Modal -->
+<div id="fixedQrModal" class="modal hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+  <div class="bg-white rounded-xl shadow-lg p-6 w-full max-w-lg relative">
+    <span class="absolute top-2 right-4 text-2xl cursor-pointer text-gray-500 hover:text-purple-600"
+          onclick="closeModal('fixedQrModal')">&times;</span>
+    <h3 class="text-xl font-bold text-purple-600 mb-4">🔖 Fixed QR</h3>
+
+    <img id="fixedQrImage" src="/fixed_qr/{{ staff_id }}" alt="Fixed QR"
+         class="mx-auto w-48 mb-4 rounded-lg shadow">
+
+    <button onclick="downloadFixedQr()"
+            class="w-full px-4 py-2 bg-teal-500 text-white rounded-lg shadow hover:bg-teal-600">
+      ⬇️ Download as JPG
+    </button>
+  </div>
+</div>
+
+<!-- Search Student Modal -->
+<div id="searchStudentModal" class="modal hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+  <div class="bg-white rounded-xl shadow-lg p-6 w-full max-w-xl relative">
+    <span class="absolute top-2 right-4 text-2xl cursor-pointer text-gray-500 hover:text-purple-600"
+          onclick="closeModal('searchStudentModal')">&times;</span>
+    <h3 class="text-xl font-bold text-purple-600 mb-4">🔍 Search Student</h3>
+
+    <!-- Search bar -->
+    <div class="flex space-x-2 mb-4">
+      <input type="text" id="searchStudentId" placeholder="Enter Student ID"
+             class="flex-1 border rounded p-2 focus:ring-purple-400 focus:border-purple-400">
+      <button onclick="searchStudentById()"
+              class="px-4 py-2 bg-teal-500 text-white rounded hover:bg-teal-600">
+        Search
+      </button>
+    </div>
+
+    <!-- Student list -->
+    <div id="studentList" style="max-height:300px; overflow-y:auto;" class="border rounded p-2 mb-4"></div>
+
+    <!-- Auto-filled cart total -->
+    <input type="number" id="searchStudentAmount" placeholder="Amount"
+           class="w-full border rounded p-2 mb-3 focus:ring-purple-400 focus:border-purple-400">
+
+    <button onclick="handleSearchStudent()"
+            class="w-full px-4 py-2 bg-purple-500 text-white rounded-lg shadow hover:bg-purple-600">
+      ✅ Record Transaction
+    </button>
+  </div>
+</div>
+
+<!-- Unregistered Student Modal -->
+<div id="unregisteredModal" class="modal hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+  <div class="bg-white rounded-xl shadow-lg p-6 w-full max-w-lg relative">
+    <span class="absolute top-2 right-4 text-2xl cursor-pointer text-gray-500 hover:text-purple-600"
+          onclick="closeModal('unregisteredModal')">&times;</span>
+    <h3 class="text-xl font-bold text-purple-600 mb-4">🧾 Manual Purchase (Unregistered Student)</h3>
+    <p class="text-gray-700 mb-2">Staff: {{ staff.full_name }}</p>
+
+    <input type="text" id="unregisteredId" placeholder="Enter School ID"
+           class="w-full border rounded p-2 mb-3 focus:ring-purple-400 focus:border-purple-400">
+
+    <input type="number" id="unregisteredAmount" placeholder="Amount"
+           class="w-full border rounded p-2 mb-3 focus:ring-purple-400 focus:border-purple-400">
+
+    <select id="unregisteredMode" class="w-full border rounded p-2 mb-3 focus:ring-purple-400 focus:border-purple-400">
+      <option>Cash</option>
+      <option>GCash</option>
+    </select>
+
+    <button onclick="handleUnregistered()"
+            class="w-full px-4 py-2 bg-purple-500 text-white rounded-lg shadow hover:bg-purple-600">
+      ✅ Record Transaction
+    </button>
+  </div>
+</div>
+
+<!-- Visitor/Personnel Modal -->
+<div id="visitorModal" class="modal hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+  <div class="bg-white rounded-xl shadow-lg p-6 w-full max-w-lg relative">
+    <span class="absolute top-2 right-4 text-2xl cursor-pointer text-gray-500 hover:text-purple-600"
+          onclick="closeModal('visitorModal')">&times;</span>
+    <h3 class="text-xl font-bold text-purple-600 mb-4">👥 Manual Purchase (Visitor/Personnel)</h3>
+    <p class="text-gray-700 mb-2">Staff: {{ staff.full_name }}</p>
+
+    <input type="number" id="visitorAmount" placeholder="Amount"
+           class="w-full border rounded p-2 mb-3 focus:ring-purple-400 focus:border-purple-400">
+
+    <select id="visitorMode" class="w-full border rounded p-2 mb-3 focus:ring-purple-400 focus:border-purple-400">
+      <option>Cash</option>
+      <option>GCash</option>
+    </select>
+
+    <button onclick="handleVisitor()"
+            class="w-full px-4 py-2 bg-teal-500 text-white rounded-lg shadow hover:bg-teal-600">
+      ✅ Record Transaction
+    </button>
+  </div>
+</div>
+<!-- Charts Section -->
+<section id="charts" class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+  <!-- Transaction Trends -->
+  <div class="bg-white rounded-xl shadow-lg p-6">
+    <h3 class="text-xl font-bold text-purple-600 mb-4">📊 Transaction Trends</h3>
+    <canvas id="staffTxnChart" class="w-full h-64"></canvas>
   </div>
 
-  <div class="card">
-    <h3>Staff Totals</h3>
-    <canvas id="staffTotalsChart"></canvas>
+  <!-- Totals Overview -->
+  <div class="bg-white rounded-xl shadow-lg p-6">
+    <h3 class="text-xl font-bold text-teal-600 mb-4">📈 Totals Overview</h3>
+    <canvas id="staffTotalsChart" class="w-full h-64"></canvas>
+  </div>
+</section>
+<!-- Meals Menu -->
+<section id="meals" class="bg-white rounded-xl shadow-lg p-6 mb-8">
+  <h3 class="text-xl font-bold text-purple-600 mb-4">🍽 Meals Menu</h3>
+
+  <!-- Category Dropdown -->
+  <div class="mb-4">
+    <label for="mealCategory" class="block text-sm font-medium text-gray-700">Filter by Category:</label>
+    <select id="mealCategory" onchange="filterMeals()"
+            class="mt-2 w-48 border rounded p-2 focus:ring-purple-400 focus:border-purple-400">
+      <option value="all">All</option>
+      <option value="Main">Meals</option>
+      <option value="Snack">Snacks</option>
+      <option value="Drink">Drinks</option>
+      <option value="Dessert">Desserts</option>
+    </select>
   </div>
 
-  <script>
-    const staffTxnCtx = document.getElementById('staffTxnChart').getContext('2d');
-    new Chart(staffTxnCtx, {
-      type: 'bar',
-      data: {
-        labels: {{ txn_dates|tojson }},
-        datasets: [
-          { label:'Top-Ups', data: {{ txn_topups|tojson }}, backgroundColor:'#22c55e' },
-          { label:'Purchases', data: {{ txn_purchases|tojson }}, backgroundColor:'#2563eb' }
-        ]
+  <!-- Menu Grid -->
+  <div id="mealGrid" class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+    <!-- Sample Meal Items -->
+    <div class="meal-card bg-purple-50 rounded-lg shadow p-4 flex flex-col items-center hover:shadow-md transition"
+         data-category="Main">
+      <img src="{{ url_for('static', filename='images/tap_silog.jpg') }}" alt="Tapsilog" class="w-24 h-24 object-cover rounded mb-2">
+      <h4 class="text-lg font-semibold text-purple-700">Tapsilog</h4>
+      <p class="text-gray-600">₱75.00</p>
+      <p class="text-sm text-gray-500">Main</p>
+      <input type="number" id="qty_tap_silog" value="1" min="1"
+             class="mt-2 w-20 border rounded p-1 text-center focus:ring-purple-400 focus:border-purple-400">
+      <button onclick="addToCart('1','Tapsilog','75', document.getElementById('qty_tap_silog').value)"
+              class="mt-3 px-4 py-2 bg-teal-500 text-white rounded hover:bg-teal-600">
+        ➕ Add to Cart
+      </button>
+    </div>
+
+    <div class="meal-card bg-purple-50 rounded-lg shadow p-4 flex flex-col items-center hover:shadow-md transition"
+         data-category="Drink">
+      <img src="{{ url_for('static', filename='images/teh_ais.jpg') }}" alt="Teh Ais" class="w-24 h-24 object-cover rounded mb-2">
+      <h4 class="text-lg font-semibold text-purple-700">Teh Ais</h4>
+      <p class="text-gray-600">₱25.00</p>
+      <p class="text-sm text-gray-500">Drink</p>
+      <input type="number" id="qty_teh_ais" value="1" min="1"
+             class="mt-2 w-20 border rounded p-1 text-center focus:ring-purple-400 focus:border-purple-400">
+      <button onclick="addToCart('2','Teh Ais','25', document.getElementById('qty_teh_ais').value)"
+              class="mt-3 px-4 py-2 bg-teal-500 text-white rounded hover:bg-teal-600">
+        ➕ Add to Cart
+      </button>
+    </div>
+
+    <div class="meal-card bg-purple-50 rounded-lg shadow p-4 flex flex-col items-center hover:shadow-md transition"
+         data-category="Dessert">
+      <img src="{{ url_for('static', filename='images/tiramisu.jpg') }}" alt="Tiramisu" class="w-24 h-24 object-cover rounded mb-2">
+      <h4 class="text-lg font-semibold text-purple-700">Tiramisu</h4>
+      <p class="text-gray-600">₱100.00</p>
+      <p class="text-sm text-gray-500">Dessert</p>
+      <input type="number" id="qty_tiramisu" value="1" min="1"
+             class="mt-2 w-20 border rounded p-1 text-center focus:ring-purple-400 focus:border-purple-400">
+      <button onclick="addToCart('3','Tiramisu','100', document.getElementById('qty_tiramisu').value)"
+              class="mt-3 px-4 py-2 bg-teal-500 text-white rounded hover:bg-teal-600">
+        ➕ Add to Cart
+      </button>
+    </div>
+  </div>
+</section>
+
+<script>
+  // Filter meals by category
+  function filterMeals() {
+    const selected = document.getElementById("mealCategory").value;
+    const cards = document.querySelectorAll(".meal-card");
+
+    cards.forEach(card => {
+      if (selected === "all" || card.dataset.category === selected) {
+        card.style.display = "flex";
+      } else {
+        card.style.display = "none";
       }
+    });
+  }
+</script>
+<!-- Checkout Options Modal -->
+<div id="checkoutModal" class="modal hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+  <div class="bg-white rounded-xl shadow-lg p-6 w-full max-w-lg relative">
+    <span class="absolute top-2 right-4 text-2xl cursor-pointer text-gray-500 hover:text-purple-600"
+          onclick="closeModal('checkoutModal')">&times;</span>
+    <h3 class="text-xl font-bold text-purple-600 mb-4">✅ Checkout Options</h3>
+    <p class="text-gray-700 mb-4">Choose how to process this order:</p>
+
+    <div class="space-y-3">
+      <button onclick="openCheckoutModal('scanQrModal')"
+              class="w-full px-4 py-2 bg-purple-500 text-white rounded-lg shadow hover:bg-purple-600">
+        📷 Scan Student QR
+      </button>
+      <button onclick="openCheckoutModal('searchStudentModal')"
+              class="w-full px-4 py-2 bg-teal-500 text-white rounded-lg shadow hover:bg-teal-600">
+        🔍 Search Student ID
+      </button>
+      <button onclick="openCheckoutModal('unregisteredModal')"
+              class="w-full px-4 py-2 bg-indigo-500 text-white rounded-lg shadow hover:bg-indigo-600">
+        🧾 Unregistered Student
+      </button>
+      <button onclick="openCheckoutModal('visitorModal')"
+              class="w-full px-4 py-2 bg-gray-500 text-white rounded-lg shadow hover:bg-gray-600">
+        👥 Visitor/Personnel
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Cart Section -->
+<div class="mt-8 bg-purple-100 rounded-lg p-6 shadow">
+  <h4 class="text-lg font-bold text-purple-700 mb-4">🛒 Cart</h4>
+  <ul id="cartList" class="space-y-2 text-gray-700"></ul>
+  <p id="cartTotal" class="mt-2 font-bold text-purple-600">Total: ₱0</p>
+  <div class="flex space-x-2 mt-4">
+    <button onclick="openModal('checkoutModal')"
+            class="mt-4 w-full px-4 py-2 bg-teal-500 text-white rounded-lg shadow hover:bg-teal-600">
+      ✅ Checkout
+    </button>
+
+
+    <button onclick="clearCart()"
+            class="flex-1 px-4 py-2 bg-red-500 text-white rounded-lg shadow hover:bg-red-600">
+      🗑 Clear Cart
+    </button>
+  </div>
+</div>
+
+
+<script>
+  // Cart logic with quantity + remove + clear + edit
+  let cart = [];
+
+  function addToCart(id, name, price, qty = 1) {
+    qty = parseInt(qty);
+    if (isNaN(qty) || qty < 1) qty = 1;
+
+    const existing = cart.find(item => item.id === id);
+    if (existing) {
+      existing.qty += qty;
+    } else {
+      cart.push({ id, name, price: parseFloat(price), qty });
+    }
+    renderCart();
+    showFlash(`${qty} x ${name} added to cart`, "info");
+  }
+
+  function removeFromCart(id) {
+    cart = cart.filter(item => item.id !== id);
+    renderCart();
+    showFlash("Item removed from cart", "info");
+  }
+
+  function updateQuantity(id, newQty) {
+    newQty = parseInt(newQty);
+    if (isNaN(newQty) || newQty < 1) newQty = 1;
+    const item = cart.find(i => i.id === id);
+    if (item) {
+      item.qty = newQty;
+      renderCart();
+      showFlash(`Quantity updated for ${item.name}`, "info");
+    }
+  }
+
+  function clearCart() {
+    cart = [];
+    renderCart();
+    showFlash("Cart cleared", "info");
+  }
+
+  function renderCart() {
+    const list = document.getElementById("cartList");
+    const total = document.getElementById("cartTotal");
+    list.innerHTML = "";
+    let sum = 0;
+
+    cart.forEach(item => {
+      sum += item.price * item.qty;
+      const li = document.createElement("li");
+      li.className = "flex justify-between items-center";
+      li.innerHTML = `
+        <span>${item.name} - ₱${item.price} each</span>
+        <div class="flex items-center space-x-2">
+          <input type="number" value="${item.qty}" min="1"
+                 onchange="updateQuantity('${item.id}', this.value)"
+                 class="w-16 border rounded p-1 text-center focus:ring-purple-400 focus:border-purple-400">
+          <button onclick="removeFromCart('${item.id}')"
+                  class="px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600 text-xs">
+            ❌ Remove
+          </button>
+        </div>
+      `;
+      list.appendChild(li);
     });
 
-    const staffTotalsCtx = document.getElementById('staffTotalsChart').getContext('2d');
-    new Chart(staffTotalsCtx, {
-      type: 'line',
-      data: {
-        labels: {{ totals_dates|tojson }},
-        datasets: [
-          { label:'Manual', data: {{ manual_totals|tojson }}, borderColor:'#6b7280', fill:false },
-          { label:'Cashless', data: {{ cashless_totals|tojson }}, borderColor:'#2563eb', fill:false },
-          { label:'Others', data: {{ other_totals|tojson }}, borderColor:'#f59e0b', fill:false }
-        ]
+    total.textContent = `Total: ₱${sum.toFixed(2)}`;
+  }
+
+  function openCheckoutModal(targetModal) {
+  // Get cart total
+  const totalText = document.getElementById("cartTotal").textContent;
+  const total = parseFloat(totalText.replace("Total: ₱", ""));
+
+  // Close checkout options modal
+  closeModal("checkoutModal");
+
+  // Pre-fill amount fields in target modal
+  if (targetModal === "scanQrModal") {
+    document.getElementById("qrAmount").value = total;
+  }
+  if (targetModal === "searchStudentModal") {
+    document.getElementById("searchStudentAmount").value = total;
+  }
+  if (targetModal === "unregisteredModal") {
+    document.getElementById("unregisteredAmount").value = total;
+  }
+  if (targetModal === "visitorModal") {
+    document.getElementById("visitorAmount").value = total;
+  }
+
+  // Open the chosen modal
+  openModal(targetModal);
+}
+function handleQrTransaction() {
+  const amount = document.getElementById("qrAmount").value;
+  const mode = document.getElementById("qrMode").value;
+  const qrResult = document.getElementById("qr-result").textContent;
+
+  if (!qrResult || !amount) {
+    showFlash("Please scan a QR and ensure cart total is filled!", "error");
+    return;
+  }
+
+  fetch("/staff_qr_transaction", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      studentQr: qrResult,
+      amount: parseFloat(amount),
+      mode,
+      cart: cart // pass the cart items too
+    })
+  })
+  .then(res => res.json())
+  .then(data => {
+    if (data.success) {
+      showFlash(`₱${amount} deducted from ${data.student_name}'s balance!`, "success");
+      cart = [];
+      renderCart();
+      closeModal("scanQrModal");
+    } else {
+      showFlash(data.message, "error");
+    }
+  });
+}
+function handleSearchStudent() {
+  const schoolId = document.getElementById("searchStudentId").value;
+  const amount = document.getElementById("searchStudentAmount").value;
+
+  if (!schoolId || !amount) {
+    showFlash("Select a student and ensure cart total is filled!", "error");
+    return;
+  }
+
+  fetch("/staff_search_student_transaction", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      school_id: schoolId,   // ✅ use school_id
+      amount: parseFloat(amount),
+      cart: cart
+    })
+  })
+  .then(res => res.json())
+  .then(data => {
+    if (data.success) {
+      showFlash(`₱${amount} deducted from ${data.student_name}'s balance!`, "success");
+      cart = [];
+      renderCart();
+      closeModal("searchStudentModal");
+    } else {
+      showFlash(data.message, "error");
+    }
+  });
+}
+
+function openModal(id) {
+  const modal = document.getElementById(id);
+  if (modal) {
+    modal.classList.remove("hidden");
+    if (id === "searchStudentModal") {
+      loadStudents(); // load students when opening this modal
+    }
+  }
+}
+
+function showFlash(message, type="info") {
+  const flash = document.createElement("div");
+  flash.className = `fixed top-4 right-4 px-4 py-2 rounded shadow text-white z-50
+    ${type === "success" ? "bg-green-500" : type === "error" ? "bg-red-500" : "bg-purple-500"}`;
+  flash.textContent = message;
+  document.body.appendChild(flash);
+  setTimeout(() => flash.remove(), 3000);
+}
+function openModal(id) {
+  const modal = document.getElementById(id);
+  if (modal) {
+    modal.classList.remove("hidden");
+  } else {
+    console.error("Modal not found:", id);
+  }
+}
+
+function closeModal(id) {
+  const modal = document.getElementById(id);
+  if (modal) {
+    modal.classList.add("hidden");
+  } else {
+    console.error("Modal not found:", id);
+  }
+}
+function showFlash(message, type="info") {
+  const flash = document.createElement("div");
+  flash.className = `fixed top-4 right-4 px-4 py-2 rounded shadow text-white z-50
+    ${type === "success" ? "bg-green-500" : type === "error" ? "bg-red-500" : "bg-purple-500"}`;
+  flash.textContent = message;
+  document.body.appendChild(flash);
+  setTimeout(() => flash.remove(), 3000);
+}
+// Load all students when modal opens
+function loadStudents() {
+  fetch("/staff_students")
+    .then(res => res.json())
+    .then(data => {
+      if (data.success) {
+        const listDiv = document.getElementById("studentList");
+        listDiv.innerHTML = "<table class='w-full text-sm'><tr class='font-bold text-purple-600'><th>Name</th><th>School ID</th><th>Grade</th><th>Strand</th><th>Balance</th></tr></table>";
+        const table = listDiv.querySelector("table");
+
+        data.students.forEach(s => {
+          const row = document.createElement("tr");
+          row.className = "cursor-pointer hover:bg-purple-100";
+          row.innerHTML = `
+            <td>${s.full_name}</td>
+            <td>${s.school_id}</td>
+            <td>${s.grade_level}</td>
+            <td>${s.strand}</td>
+            <td>₱${s.balance}</td>
+          `;
+          row.onclick = () => {
+            document.getElementById("searchStudentId").value = s.school_id;
+            document.getElementById("searchStudentAmount").value = parseFloat(document.getElementById("cartTotal").textContent.replace("Total: ₱",""));
+            showFlash(`Selected: ${s.full_name}`, "info");
+          };
+          table.appendChild(row);
+        });
       }
     });
-  </script>
+}
+
+
+// Search by ID manually
+function searchStudentById() {
+  const id = document.getElementById("searchStudentId").value;
+  if (!id) {
+    showFlash("Enter a Student ID!", "error");
+    return;
+  }
+
+  fetch(`/staff_students?id=${id}`)
+    .then(res => res.json())
+    .then(data => {
+      if (data.success && data.student) {
+        document.getElementById("searchStudentAmount").value = parseFloat(document.getElementById("cartTotal").textContent.replace("Total: ₱",""));
+        showFlash(`Found: ${data.student.full_name}`, "success");
+      } else {
+        showFlash("Student not found!", "error");
+      }
+    });
+}
+
+    </script>
+  </main>
 </body>
 </html>

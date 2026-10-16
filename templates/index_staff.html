@@ -2,51 +2,64 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Staff Portal - School E-Wallet</title>
+  <title>Staff Portal | School E-Wallet</title>
+  <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    body {
-      margin:0; font-family:Arial, sans-serif;
-      background: linear-gradient(135deg, #22c55e, #15803d);
-      color:#fff; text-align:center;
+    @keyframes gradientShift {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
     }
-    header { padding:80px 20px; }
-    header h1 { font-size:42px; margin-bottom:10px; }
-    header p { font-size:18px; color:#d1fae5; }
-    .btn {
-      display:inline-block; margin:15px; padding:15px 25px;
-      background:#fff; color:#15803d; text-decoration:none;
-      border-radius:8px; font-weight:bold; transition:0.3s;
+    .animated-bg {
+      background: linear-gradient(-45deg, #d8b4fe, #c4b5fd, #a7f3d0, #c4b5fd);
+      background-size: 400% 400%;
+      animation: gradientShift 15s ease infinite;
     }
-    .btn:hover { background:#f59e0b; color:#fff; }
-    .features { display:flex; justify-content:center; gap:20px; flex-wrap:wrap; margin:40px auto; max-width:1000px; }
-    .card { background:#fff; color:#15803d; padding:20px; border-radius:10px; width:280px; box-shadow:0 4px 10px rgba(0,0,0,0.2); }
-    footer { margin-top:40px; padding:20px; background:#15803d; color:#d1fae5; }
   </style>
 </head>
-<body>
-  <header>
-    <h1>Staff Portal</h1>
-    <p>Serve students efficiently with secure transactions</p>
-    <a href="{{ url_for('signin_staff') }}" class="btn">Staff Login</a>
+<body class="animated-bg min-h-screen flex flex-col text-gray-900">
+
+  <!-- Navbar -->
+  <header class="flex justify-between items-center px-8 py-4 bg-white bg-opacity-40 shadow-md">
+    <div class="flex items-center space-x-3">
+      <img src="{{ url_for('static', filename='images/bambini_logo.png') }}" class="w-12 h-12">
+      <span class="font-bold text-purple-700">Scuola dei Bambini di Sta. Teresita International Montessori School Inc.</span>
+    </div>
+    <nav class="space-x-6 text-gray-700 font-medium">
+      <a href="#features" class="hover:text-purple-600">Features</a>
+      <a href="#pricing" class="hover:text-purple-600">Pricing</a>
+      <a href="#events" class="hover:text-purple-600">Events</a>
+    </nav>
   </header>
 
-  <section class="features">
-    <div class="card">
-      <h3>⚡ Fast Processing</h3>
-      <p>Handle top-ups and purchases quickly with minimal errors.</p>
+  <!-- Hero Section -->
+  <section class="flex flex-col md:flex-row items-center justify-between flex-1 px-12 py-16">
+    <!-- Left Text -->
+    <div class="md:w-1/2 text-center md:text-left">
+      <h1 class="text-5xl font-extrabold bg-gradient-to-r from-purple-400 via-purple-500 to-teal-300 bg-clip-text text-transparent drop-shadow-lg">
+        Empower Staff with Smart Tools
+      </h1>
+      <p class="mt-6 text-lg text-gray-800 max-w-md">
+        Manage transactions, assist students, and streamline canteen operations with the School E-Wallet System.
+      </p>
+      <div class="mt-8 space-x-4">
+        <a href="{{ url_for('signin_staff') }}" class="px-6 py-3 bg-purple-500 text-white rounded-full shadow-lg hover:scale-105">🌟 Staff Portal</a>
+        <a href="#learn" class="px-6 py-3 bg-teal-500 text-white rounded-full shadow-lg hover:scale-105">Learn More</a>
+      </div>
     </div>
-    <div class="card">
-      <h3>📋 Transaction Records</h3>
-      <p>View and manage all transactions handled daily.</p>
-    </div>
-    <div class="card">
-      <h3>🔒 Secure Access</h3>
-      <p>Protected staff accounts with OTP and PIN verification.</p>
+
+    <!-- Right Visual -->
+    <div class="md:w-1/2 flex justify-center mt-12 md:mt-0">
+      <img src="{{ url_for('static', filename='images/mockups/staff_dashboard.jpg') }}" 
+           alt="Staff Dashboard Preview" 
+           class="rounded-xl shadow-2xl w-[400px] h-[300px] object-cover">
     </div>
   </section>
 
-  <footer>
-    <p>&copy; 2026 FCD Central Institute | Staff Portal</p>
+  <!-- Footer -->
+  <footer class="text-center py-6 bg-white bg-opacity-40 shadow-lg">
+    <p class="text-gray-700">&copy; 2026 Scuola dei Bambini di Sta. Teresita International Montessori School Inc. | QRCode Payment System</p>
   </footer>
+
 </body>
 </html>

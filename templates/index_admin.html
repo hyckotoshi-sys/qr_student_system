@@ -2,51 +2,79 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Admin Portal - School E-Wallet</title>
+  <title>Admin Portal | School E-Wallet</title>
+  <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    body {
-      margin:0; font-family:Arial, sans-serif;
-      background: linear-gradient(135deg, #2563eb, #1e3a8a);
-      color:#fff; text-align:center;
+    @keyframes gradientShift {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
     }
-    header { padding:80px 20px; }
-    header h1 { font-size:42px; margin-bottom:10px; }
-    header p { font-size:18px; color:#c7d2fe; }
-    .btn {
-      display:inline-block; margin:15px; padding:15px 25px;
-      background:#fff; color:#1e3a8a; text-decoration:none;
-      border-radius:8px; font-weight:bold; transition:0.3s;
+    .animated-bg {
+      background: linear-gradient(-45deg, #d8b4fe, #c4b5fd, #a7f3d0, #c4b5fd);
+      background-size: 400% 400%;
+      animation: gradientShift 15s ease infinite;
     }
-    .btn:hover { background:#f59e0b; color:#fff; }
-    .features { display:flex; justify-content:center; gap:20px; flex-wrap:wrap; margin:40px auto; max-width:1000px; }
-    .card { background:#fff; color:#1e3a8a; padding:20px; border-radius:10px; width:280px; box-shadow:0 4px 10px rgba(0,0,0,0.2); }
-    footer { margin-top:40px; padding:20px; background:#1e3a8a; color:#c7d2fe; }
   </style>
 </head>
-<body>
-  <header>
-    <h1>Admin Portal</h1>
-    <p>Manage transactions, students, and staff with full control</p>
-    <a href="{{ url_for('signin_admin') }}" class="btn">Admin Login</a>
+<body class="animated-bg min-h-screen flex flex-col text-gray-900">
+
+  <!-- Navbar -->
+  <header class="flex justify-between items-center px-8 py-4 bg-white bg-opacity-40 shadow-md">
+    <div class="flex items-center space-x-3">
+      <img src="{{ url_for('static', filename='images/bambini_logo.png') }}" class="w-12 h-12">
+      <span class="font-bold text-purple-700">Scuola dei Bambini di Sta. Teresita International Montessori School Inc.</span>
+    </div>
+    <nav class="space-x-6 text-gray-700 font-medium">
+      <a href="#features" class="hover:text-purple-600">Features</a>
+      <a href="#reports" class="hover:text-purple-600">Reports</a>
+      <a href="#management" class="hover:text-purple-600">Management</a>
   </header>
 
-  <section class="features">
-    <div class="card">
-      <h3>📊 Real-Time Dashboards</h3>
-      <p>Monitor balances, registrations, and staff totals instantly.</p>
+  <!-- Hero Section -->
+  <section class="flex flex-col md:flex-row items-center justify-between flex-1 px-12 py-16">
+    <!-- Left Text -->
+    <div class="md:w-1/2 text-center md:text-left">
+      <h1 class="text-5xl font-extrabold bg-gradient-to-r from-purple-400 via-purple-500 to-teal-300 bg-clip-text text-transparent drop-shadow-lg">
+        Simplify School Management
+      </h1>
+      <p class="mt-6 text-lg text-gray-800 max-w-md">
+        Oversee accounts, monitor transactions, and generate reports with ease using the School E-Wallet System.
+      </p>
+      <div class="mt-8 space-x-4">
+        <a href="{{ url_for('signin_admin') }}" class="px-6 py-3 bg-purple-500 text-white rounded-full shadow-lg hover:scale-105">🌟 Admin Portal</a>
+        <a href="#features" class="px-6 py-3 bg-teal-500 text-white rounded-full shadow-lg hover:scale-105">Explore Features</a>
+      </div>
     </div>
-    <div class="card">
-      <h3>👥 Student Management</h3>
-      <p>View and update student accounts and balances.</p>
-    </div>
-    <div class="card">
-      <h3>🔒 Secure Oversight</h3>
-      <p>Admin accounts protected with OTP and PIN verification.</p>
+
+    <!-- Right Visual -->
+    <div class="md:w-1/2 flex justify-center mt-12 md:mt-0">
+      <img src="{{ url_for('static', filename='images/mockups/admin_dashboard.png') }}" 
+           alt="Admin Dashboard Preview" 
+           class="rounded-xl shadow-2xl w-[400px] h-[300px] object-cover">
     </div>
   </section>
 
-  <footer>
-    <p>&copy; 2026 FCD Central Institute | Admin Portal</p>
+  <!-- Feature Boxes -->
+  <section id="features" class="grid md:grid-cols-3 gap-8 px-12 py-16">
+    <div class="bg-white bg-opacity-70 rounded-xl shadow-lg p-6 hover:scale-105 transition">
+      <h3 class="text-xl font-bold text-purple-700 mb-2">👥 Manage Accounts</h3>
+      <p class="text-gray-700">Create, update, and oversee student and staff accounts securely.</p>
+    </div>
+    <div class="bg-white bg-opacity-70 rounded-xl shadow-lg p-6 hover:scale-105 transition">
+      <h3 class="text-xl font-bold text-purple-700 mb-2">📊 Track Transactions</h3>
+      <p class="text-gray-700">Monitor top-ups and purchases in real-time with detailed logs.</p>
+    </div>
+    <div class="bg-white bg-opacity-70 rounded-xl shadow-lg p-6 hover:scale-105 transition">
+      <h3 class="text-xl font-bold text-purple-700 mb-2">📑 Generate Reports</h3>
+      <p class="text-gray-700">Access analytics and export reports to optimize school operations.</p>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="text-center py-6 bg-white bg-opacity-40 shadow-lg">
+    <p class="text-gray-700">&copy; 2026 Scuola dei Bambini di Sta. Teresita International Montessori School Inc. | QRCode Payment System</p>
   </footer>
+
 </body>
 </html>

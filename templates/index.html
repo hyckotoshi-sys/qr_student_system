@@ -2,72 +2,81 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>School E-Wallet System</title>
+  <title>Join the Student E-Wallet</title>
+  <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    body {
-      margin:0; font-family:Arial, sans-serif;
-      background: url('/static/images/landing_bg.png') no-repeat center center fixed;
-      background-size: cover;
-      color:#fff; text-align:center;
+    @keyframes gradientShift {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
     }
-    header {
-      padding:80px 20px;
-      background:rgba(0,0,0,0.5);
+    .animated-bg {
+      background: linear-gradient(-45deg, #d8b4fe, #c4b5fd, #a7f3d0, #c4b5fd);
+      background-size: 400% 400%;
+      animation: gradientShift 15s ease infinite;
     }
-    header h1 { font-size:48px; margin-bottom:10px; }
-    header p { font-size:18px; color:#e5e7eb; }
-    .btn-getstarted {
-      display:inline-block; margin-top:30px; padding:15px 30px;
-      background:#f59e0b; color:#fff; font-weight:bold;
-      border-radius:8px; text-decoration:none; transition:0.3s;
+    .glass {
+      background: rgba(255, 255, 255, 0.25);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.3);
     }
-    .btn-getstarted:hover { background:#fff; color:#1e3a8a; }
-    nav { margin:40px 0; }
-    nav a {
-      display:inline-block; margin:10px; padding:15px 25px;
-      background:#fff; color:#1e3a8a; text-decoration:none;
-      border-radius:8px; font-weight:bold; transition:0.3s;
-    }
-    nav a:hover { background:#f59e0b; color:#fff; }
-    .features {
-      display:flex; justify-content:center; gap:20px;
-      flex-wrap:wrap; margin:40px auto; max-width:1000px;
-    }
-    .card {
-      background:#fff; color:#1e3a8a;
-      padding:20px; border-radius:10px;
-      width:280px; box-shadow:0 4px 10px rgba(0,0,0,0.2);
-    }
-    .card h3 { margin-top:0; }
-    footer { margin-top:40px; padding:20px; background:#1e3a8a; color:#e5e7eb; }
   </style>
 </head>
-<body>
-  <header>
-    <h1>Welcome to FCD Central Institute</h1>
-    <p>Your secured system for students, staff, and administrators needs in our cafeteria</p>
-    <!-- Get Started button now leads to student signup -->
-    <a href="{{ url_for('signin_student') }}" class="btn-getstarted">Get Started</a>
+<body class="animated-bg min-h-screen flex flex-col text-gray-900">
+
+  <!-- Navbar -->
+  <header class="flex justify-between items-center px-8 py-4 glass shadow-lg">
+    <div class="flex items-center space-x-3">
+      <img src="{{ url_for('static', filename='images/bambini_logo.png') }}" class="w-12 h-12">
+      <span class="font-bold text-purple-700">Scuola dei Bambini di Sta. Teresita International Montessori School Inc.</span>
+    </div>
+    <nav class="space-x-6 text-gray-800 font-medium">
+      <a href="#features" class="hover:text-purple-600">Features</a>
+      <a href="#benefits" class="hover:text-purple-600">Benefits</a>
+    </nav>
   </header>
 
-  <section class="features">
-    <div class="card">
-      <h3>💳 Easy Top-Ups</h3>
-      <p>Quickly add funds via GCash or bank transfer.</p>
+  <!-- Hero -->
+  <section class="flex flex-col md:flex-row items-center justify-between flex-1 px-12 py-16">
+    <div class="md:w-1/2 text-center md:text-left">
+      <h1 class="text-6xl font-extrabold bg-gradient-to-r from-purple-400 via-purple-500 to-teal-300 bg-clip-text text-transparent drop-shadow-lg">
+        Welcome to Your School E-Wallet
+      </h1>
+      <p class="mt-6 text-lg text-gray-800 max-w-md">
+        Sign up today and enjoy fast, secure, and convenient payments for canteen, events, and more.
+      </p>
+      <div class="mt-8 space-x-4">
+        <a href="{{ url_for('signup_student') }}" class="px-6 py-3 bg-purple-500 text-white rounded-full shadow-lg hover:scale-105">🌟 Sign Up Now</a>
+        <a href="#learn" class="px-6 py-3 bg-teal-500 text-white rounded-full shadow-lg hover:scale-105">Learn More</a>
+      </div>
     </div>
-    <div class="card">
-      <h3>📊 Smart Dashboards</h3>
-      <p>Real-time insights for admins and staff.</p>
-    </div>
-    <div class="card">
-      <h3>🔒 Secure Payments</h3>
-      <p>Safe transactions with OTP and PIN verification.</p>
+
+    <!-- Right Feature Panels -->
+    <div class="md:w-1/2 grid grid-cols-1 gap-6 mt-12 md:mt-0">
+      <div class="glass rounded-xl shadow-xl p-6 hover:scale-105 transition">
+        <h3 class="text-xl font-bold text-purple-700 mb-2">⚡ Fast & Secure Payments</h3>
+        <p class="text-gray-700">Use QR codes to pay instantly at the canteen and school events.</p>
+      </div>
+      <div class="glass rounded-xl shadow-xl p-6 hover:scale-105 transition">
+        <h3 class="text-xl font-bold text-purple-700 mb-2">💳 Easy Top-Ups</h3>
+        <p class="text-gray-700">Top-up your wallet via GCash or bank transfers anytime.</p>
+      </div>
+      <div class="glass rounded-xl shadow-xl p-6 hover:scale-105 transition">
+        <h3 class="text-xl font-bold text-purple-700 mb-2">🎉 Student Benefits</h3>
+        <p class="text-gray-700">Enjoy discounts, rewards, and hassle-free transactions.</p>
+      </div>
+      <div class="glass rounded-xl shadow-xl p-6 hover:scale-105 transition">
+        <h3 class="text-xl font-bold text-purple-700 mb-2">🏫 School Events Integration</h3>
+        <p class="text-gray-700">Your wallet works seamlessly with school activities and celebrations.</p>
+      </div>
     </div>
   </section>
 
-  <footer>
-    <p>&copy; 2026 FCD Central Institute | School E-Wallet System</p>
+  <!-- Footer -->
+  <footer class="text-center py-6 glass shadow-lg">
+    <p class="text-gray-800">&copy; 2026 
+Scuola dei Bambini di Sta. Teresita International Montessori School Inc. | QRcode Payment System</p>
   </footer>
+
 </body>
 </html>
-

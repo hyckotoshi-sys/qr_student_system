@@ -1,23 +1,56 @@
 from decimal import Decimal
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask import Flask, render_template, request, redirect, url_for, session, flash, Response, send_file, jsonify
-import os
-import mysql.connector
-import random
-import datetime
-import uuid
-import io
+import os, re, datetime, random, uuid, io, smtplib, qrcode, time
 from werkzeug.utils import secure_filename
-from sendgrid import SendGridAPIClient
-from sendgrid.helpers.mail import Mail, Email
-import qrcode
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 from jinja2 import Environment, FileSystemLoader
+import MySQLdb.cursors
 
+
+# ✅ Import db from extensions
+from extensions import db  
 
 # ---------------- Flask Config ----------------
 app = Flask(__name__)
-app.secret_key = "secretkey"
+app.secret_key = os.environ.get("SECRET_KEY", "fallback_key")
 
+# ✅ Configure SQLAlchemy to connect to your MySQL database
+app.config['SQLALCHEMY_DATABASE_URI'] = "mysql+pymysql://school_user:qrcode12345!@localhost:3307/school_system"
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+# ✅ Initialize db with app
+db.init_app(app)
+
+# ✅ Import models AFTER db is initialized
+from models import Student, Transaction
+from flask_mysqldb import MySQL
+
+app.config['MYSQL_USER'] = 'school_user'
+app.config['MYSQL_PASSWORD'] = 'qrcode12345!'
+app.config['MYSQL_DB'] = 'school_system'
+app.config['MYSQL_HOST'] = 'localhost'
+app.config['MYSQL_PORT'] = 3307
+
+mysql = MySQL(app)
+
+
+def generate_fixed_qr(student_id):
+    # Create QR code with student_id (or school_id)
+    qr = qrcode.make(student_id)
+
+    # Ensure folder exists
+    qr_folder = os.path.join("static", "qrcodes")
+    os.makedirs(qr_folder, exist_ok=True)
+
+    # Save QR file
+    qr_path = os.path.join(qr_folder, f"{student_id}.png")
+    qr.save(qr_path)
+
+    return qr_path
+
+                                
 # ---------------- Upload Config ----------------
 UPLOAD_FOLDER = "static/uploads"
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif"}
@@ -28,7 +61,7 @@ def allowed_file(filename):
 
 # --------------- Routes ---------------
 
-@app.route("/")
+@app.route("/") 
 def index():
     # Main landing page for students
     return render_template("index.html")
@@ -53,15 +86,21 @@ def signup():
     return render_template('signup.html')
 
 
-# Pending Transactions
-@app.route('/admin/pending')
-def dashboard_pending():
-    conn = get_connection()
-    cursor = conn.cursor(dictionary=True)
+# ---------------- Admin Pending Top-Ups ----------------
+@app.route("/admin/pending_topups")
+def admin_pending_topups():
+    if "email" not in session or session.get("role") != "admin":
+        flash("Unauthorized access.", "error")
+        return redirect(url_for("signin_admin"))
 
+    conn = get_connection()
+    cursor = conn.cursor(cursorclass=MySQLdb.cursors.DictCursor)
+
+
+    # Fetch all pending top-ups
     cursor.execute("""
-        SELECT t.topup_id, t.created_at, t.amount, t.status, t.reference_number,
-               s.full_name AS student_name
+        SELECT t.topup_id, s.full_name, s.school_id, t.amount, t.payment_mode, 
+               t.reference_number, t.created_at
         FROM topups t
         JOIN students s ON t.student_id = s.student_id
         WHERE t.status='pending'
@@ -70,16 +109,14 @@ def dashboard_pending():
     pending_topups = cursor.fetchall()
     conn.close()
 
-    return render_template('dashboard_admin.html',
-                           section='pending',
-                           pending_topups=pending_topups)
+    return render_template("admin_pending_topups.html", pending_topups=pending_topups)
 
 
 # Registered Students
 @app.route('/admin/registered')
 def dashboard_registered():
     conn = get_connection()
-    cursor = conn.cursor(dictionary=True)
+    cursor = conn.cursor(cursorclass=MySQLdb.cursors.DictCursor)
 
     cursor.execute("""
         SELECT full_name, school_id, balance, status,
@@ -95,12 +132,15 @@ def dashboard_registered():
                            registered_students=registered_students)
 
 # Transactions
-@app.route('/admin/transactions')
+@app.route('/dashboard/transactions')
 def dashboard_transactions():
-    conn = get_connection()
-    cursor = conn.cursor(dictionary=True)
+    start = request.args.get("start_date")
+    end = request.args.get("end_date")
 
-    cursor.execute("""
+    conn = get_connection()
+    cursor = conn.cursor(cursorclass=MySQLdb.cursors.DictCursor)
+
+    query = """
         SELECT t.transaction_id, t.created_at, t.type, t.amount, t.payment_mode,
                COALESCE(s.full_name, a.full_name) AS performed_by,
                st.full_name AS customer_name, st.school_id AS id_no, t.remarks
@@ -108,14 +148,25 @@ def dashboard_transactions():
         LEFT JOIN staff s ON t.staff_id = s.staff_id
         LEFT JOIN admins a ON t.admin_id = a.admin_id
         LEFT JOIN students st ON t.student_id = st.student_id
-        ORDER BY t.created_at DESC
-    """)
+        WHERE 1=1
+    """
+    params = []
+    if start:
+        query += " AND t.created_at >= %s"
+        params.append(start)
+    if end:
+        query += " AND t.created_at <= %s"
+        params.append(end)
+
+    query += " ORDER BY t.created_at DESC"
+    cursor.execute(query, params)
     transactions = cursor.fetchall()
     conn.close()
 
-    return render_template('dashboard_admin.html',
-                           section='transactions',
-                           transactions=transactions)
+    return render_template('student_transactions.html', transactions=transactions)
+
+
+
 
 
 # -------------------
@@ -134,53 +185,20 @@ def profile_student():
         return redirect(url_for("login_page"))
 
     conn = get_connection()
-    cursor = conn.cursor(dictionary=True)
+    cursor = conn.cursor(cursorclass=MySQLdb.cursors.DictCursor)
     cursor.execute("SELECT * FROM students WHERE email=%s", (session["email"],))
     student = cursor.fetchone()
     conn.close()
 
     return render_template("profile.html", student=student)
 
-@app.route("/reset_password_student", methods=["GET","POST"])
-def reset_password_student():
-    if "email" not in session or session.get("role") != "student":
-        return redirect(url_for("login_page"))
-
-    conn = get_connection()
-    cursor = conn.cursor(dictionary=True)
-    cursor.execute("""
-        SELECT security_q1, security_a1, security_q2, security_a2, security_q3, security_a3
-        FROM students WHERE email=%s
-    """, (session["email"],))
-    student = cursor.fetchone()
-
-    if request.method == "POST":
-        ans1 = request.form["answer1"].strip().lower()
-        ans2 = request.form["answer2"].strip().lower()
-        ans3 = request.form["answer3"].strip().lower()
-
-        if (ans1 == student["security_a1"].lower() and
-            ans2 == student["security_a2"].lower() and
-            ans3 == student["security_a3"].lower()):
-            
-            new_password = request.form["new_password"]
-            cursor.execute("UPDATE students SET password=%s WHERE email=%s", (new_password, session["email"]))
-            conn.commit()
-            conn.close()
-            flash("Password reset successful.", "success")
-            return redirect(url_for("dashboard_student"))
-        else:
-            flash("Security answers incorrect.", "error")
-
-    conn.close()
-    return render_template("reset_password_student.html", student=student)
 
 
 
 @app.route("/db_structure")
 def db_structure():
     conn = get_connection()
-    cursor = conn.cursor(dictionary=True)
+    cursor = conn.cursor(cursorclass=MySQLdb.cursors.DictCursor)
 
     # Query all tables + columns in your current schema
     cursor.execute("""
@@ -234,36 +252,70 @@ def is_strong_password(password):
 
 # ---------------- Database Connection ----------------
 def get_connection():
-    return mysql.connector.connect(
-        host="localhost",
-        port=3307,
-        user="school_user",
-        password="qrcode12345!",
-        database="school_system",
-        autocommit=True
-    )
+    return mysql.connection
 
 # ---------------- Email Function ----------------
-SENDGRID_API_KEY = os.environ.get("SENDGRID_API_KEY")
-FROM_EMAIL = Email("hyckotoshi@gmail.com", name="FCD Central Institute")
-REPLY_TO_EMAIL = Email("hyckotoshi@gmail.com", name="Support Team")
+FROM_EMAIL = "hyckotoshi@gmail.com"
+REPLY_TO_EMAIL = "hyckotoshi@gmail.com"
 
-def send_email(to_email, subject, body_text=None, body_html=None):
-    message = Mail(
-        from_email=Email("hyckotoshi@gmail.com", "FCD Central Institute"),
-        to_emails=to_email,
-        subject=subject,
-        plain_text_content=body_text if body_text else "",
-        html_content=body_html if body_html else body_text
-    )
+
+def send_email(to_emails, subject, body_text=None, body_html=None):
+    sender_email = "hyckotoshi@gmail.com"
+    password = "jpxb fsam zljx zjgl"  # Use Gmail/Outlook App Password
+
+    msg = MIMEMultipart("alternative")
+    msg["From"] = f"FCD Central Institute <{sender_email}>"
+    msg["To"] = ", ".join(to_emails)
+    msg["Subject"] = subject
+
+    if body_text:
+        msg.attach(MIMEText(body_text, "plain"))
+    if body_html:
+        msg.attach(MIMEText(body_html, "html"))
+
     try:
-        sg = SendGridAPIClient(SENDGRID_API_KEY)
-        response = sg.send(message)
-        print(f"Email sent to {to_email}, status code: {response.status_code}")
-        return response
+        server = smtplib.SMTP("smtp.gmail.com", 587)  # Gmail SMTP
+        server.starttls()
+        server.login(sender_email, password)
+        server.sendmail(sender_email, to_emails, msg.as_string())
+        server.quit()
+        print(f"Email sent to {to_emails}")
+        return True
     except Exception as e:
         print(f"Error sending email: {str(e)}")
-        return None
+        return False
+
+
+def generate_and_send_otp(email, subject="Your Secure Login OTP", role="student"):
+    otp = str(random.randint(100000, 999999))
+    expires = datetime.datetime.now() + datetime.timedelta(minutes=5)
+
+    conn = get_connection()
+    cursor = conn.cursor(cursorclass=MySQLdb.cursors.DictCursor)
+    cursor.execute("INSERT INTO otps (email, otp_code, expires_at) VALUES (%s,%s,%s)", (email, otp, expires))
+    conn.commit()
+    conn.close()
+
+    # Role-specific body text
+    if role == "student":
+        body_text = f"Hello Student,\n\nYour OTP is: {otp} (expires in 5 minutes).\n\nUse this to access your student dashboard."
+    elif role == "admin":
+        body_text = f"Hello Admin,\n\nYour OTP is: {otp} (expires in 5 minutes).\n\nUse this to access the admin dashboard securely."
+    elif role == "staff":
+        body_text = f"Hello Staff,\n\nYour OTP is: {otp} (expires in 5 minutes).\n\nUse this to access the staff dashboard securely."
+    else:
+        body_text = f"Your OTP is: {otp} (expires in 5 minutes)."
+
+    # Load HTML template with Jinja2
+    env = Environment(loader=FileSystemLoader("templates"))
+    template = env.get_template("otp_template.html")
+    body_html = template.render(otp=otp, role=role)
+
+    # Send email via SMTP
+    send_email([email], subject, body_text, body_html)
+
+    return otp
+
 
 # ---------------- OTP Function ----------------
 def generate_and_send_otp(email, subject="Your Secure Login OTP", role="student"):
@@ -291,7 +343,7 @@ def generate_and_send_otp(email, subject="Your Secure Login OTP", role="student"
     template = env.get_template("otp_template.html")
     body_html = template.render(otp=otp, role=role)
 
-    send_email(email, subject, body_text, body_html)
+    send_email([email], subject, body_text, body_html)
     return otp
 
 
@@ -299,49 +351,84 @@ def generate_and_send_otp(email, subject="Your Secure Login OTP", role="student"
 @app.route("/forgot_password/student", methods=["GET","POST"])
 def forgot_password_student():
     if request.method == "POST":
-        if "student_id" in request.form:  
-            # First step: user entered their ID
-            student_id = request.form["student_id"]
+        email = request.form.get("email")
 
-            conn = get_connection()
-            cursor = conn.cursor()
-            cursor.execute("""SELECT email, security_q1, security_q2, security_q3 
-                              FROM students WHERE school_id=%s""", (student_id,))
-            record = cursor.fetchone()
-            conn.close()
+        conn = get_connection()
+        cursor = conn.cursor(cursorclass=MySQLdb.cursors.DictCursor)
+        cursor.execute("SELECT security_q1, security_q2, security_q3 FROM students WHERE email=%s", (email,))
+        student = cursor.fetchone()
+        conn.close()
 
-            if record:
-                # Save email in session for later reset
-                session["pending_email"] = record[0]
-                # Show the questions page
-                return render_template("forgot_password_student_questions.html",
-                                       question1=record[1],
-                                       question2=record[2],
-                                       question3=record[3])
-            else:
-                flash("Student ID not found.")
-                return redirect(url_for("forgot_password_student"))
+        if not student:
+            flash("No account found with that email.", "error")
+            return redirect(url_for("forgot_password_student"))
 
-        else:
-            # Second step: user answered questions
-            a1 = request.form["answer1"]
-            a2 = request.form["answer2"]
-            a3 = request.form["answer3"]
-
-            conn = get_connection()
-            cursor = conn.cursor()
-            cursor.execute("""SELECT security_a1, security_a2, security_a3 
-                              FROM students WHERE email=%s""", (session["pending_email"],))
-            answers = cursor.fetchone()
-            conn.close()
-
-            if answers and answers[0] == a1 and answers[1] == a2 and answers[2] == a3:
-                return redirect(url_for("reset_password_student"))
-            else:
-                flash("Incorrect answers.")
-                return redirect(url_for("forgot_password_student"))
+        # Store email in session for later steps
+        session["reset_email"] = email
+        return render_template("answer_security.html", student=student)
 
     return render_template("forgot_password_student.html")
+
+
+
+@app.route("/verify_security_answers", methods=["POST"])
+def verify_security_answers():
+    email = session.get("reset_email")
+    a1 = request.form.get("security_a1")
+    a2 = request.form.get("security_a2")
+    a3 = request.form.get("security_a3")
+
+    conn = get_connection()
+    cursor = conn.cursor(cursorclass=MySQLdb.cursors.DictCursor)
+    cursor.execute("SELECT security_a1, security_a2, security_a3 FROM students WHERE email=%s", (email,))
+    student = cursor.fetchone()
+    conn.close()
+
+    if student and student["security_a1"].lower() == a1.lower() \
+       and student["security_a2"].lower() == a2.lower() \
+       and student["security_a3"].lower() == a3.lower():
+        return redirect(url_for("reset_password_student"))
+    else:
+        flash("Security answers did not match.", "error")
+        return redirect(url_for("forgot_password_student"))
+
+
+
+@app.route("/reset_password/student", methods=["GET","POST"])
+def reset_password_student():
+    email = session.get("reset_email")
+
+    if request.method == "POST":
+        new_password = request.form.get("new_password")
+        confirm_password = request.form.get("confirm_password")
+
+        password_regex = re.compile(r"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$")
+        if not password_regex.match(new_password):
+            flash("Password must meet complexity requirements.", "error")
+            return redirect(url_for("reset_password_student"))
+
+        if new_password != confirm_password:
+            flash("Passwords do not match.", "error")
+            return redirect(url_for("reset_password_student"))
+
+        hashed_pass = generate_password_hash(new_password)
+
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute("UPDATE students SET password=%s WHERE email=%s", (hashed_pass, email))
+        conn.commit()
+        conn.close()
+
+        # 🔹 Send OTP for final confirmation
+        generate_and_send_otp(email, subject="Confirm Your Password Reset", role="student")
+
+        flash("Password updated. Please check your email for OTP confirmation.", "success")
+        return redirect(url_for("verify_otp"))
+
+    return render_template("reset_password_student.html")
+
+
+
 
 
 # ---------------- Forgot Password (Admin) ----------------
@@ -488,58 +575,184 @@ def login():
     return render_template("login.html")
 
 
-# ---------------- Sign Up ----------------
+# ---------------- Student Sign Up ----------------
 @app.route("/signup/student", methods=["GET","POST"])
 def signup_student():
     if request.method == "POST":
         try:
-            password = request.form["password"]
+            # Collect and validate form data
+            full_name = request.form.get("full_name")
+            school_id = request.form.get("school_id")
+            email = request.form.get("email")
+            parent_email = request.form.get("parent_email")
+            contact_number = request.form.get("contact_number")
+            strand = request.form.get("strand")
+            guardian_name = request.form.get("guardian_name")
+            grade_level = request.form.get("grade_level")
+            password = request.form.get("password")
+            confirm_password = request.form.get("confirm_password")
 
-            # Validate password strength
-            if not is_strong_password(password):
-                flash("Password must be at least 8 characters and include a number and special character.", "error")
+            # 🔹 Validations (same as before)
+            if not re.match(r"^\d{7}$", school_id):
+                flash("❌ School ID must be exactly 7 digits.", "error")
+                return redirect(url_for("signup_student"))
+            if not re.match(r"^09\d{9}$", contact_number):
+                flash("❌ Phone number must start with 09 and be 11 digits.", "error")
+                return redirect(url_for("signup_student"))
+            if not email.endswith("@gmail.com") or not parent_email.endswith("@gmail.com"):
+                flash("❌ Emails must be Gmail addresses.", "error")
+                return redirect(url_for("signup_student"))
+            password_regex = re.compile(r"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$")
+            if not password_regex.match(password):
+                flash("❌ Password must meet complexity requirements.", "error")
+                return redirect(url_for("signup_student"))
+            if password != confirm_password:
+                flash("❌ Passwords do not match.", "error")
+                return redirect(url_for("signup_student"))
+            if len(request.form.get("security_a1","")) < 3 or len(request.form.get("security_a2","")) < 3 or len(request.form.get("security_a3","")) < 3:
+                flash("❌ Security answers must be at least 3 characters long.", "error")
                 return redirect(url_for("signup_student"))
 
-            hashed_pass = generate_password_hash(password)
+            # 🔹 Save data temporarily in session
+            session["pending_signup"] = {
+                "full_name": full_name,
+                "school_id": school_id,
+                "email": email,
+                "parent_email": parent_email,
+                "contact_number": contact_number,
+                "strand": strand,
+                "guardian_name": guardian_name,
+                "grade_level": grade_level,
+                "hashed_pass": generate_password_hash(password),
+                "security_q1": request.form["security_q1"],
+                "security_a1": request.form["security_a1"],
+                "security_q2": request.form["security_q2"],
+                "security_a2": request.form["security_a2"],
+                "security_q3": request.form["security_q3"],
+                "security_a3": request.form["security_a3"],
+            }
 
-            # Cast PIN to int if DB column is INT, otherwise keep as string
-            pin_value = request.form["pin"]
+            # 🔹 Generate OTP and send email using template
+            otp = str(random.randint(100000, 999999))
+            session["pending_otp"] = otp
+            
 
-            data = (
-                request.form["full_name"], request.form["school_id"], request.form["email"],
-                request.form["contact_number"], request.form["strand"], request.form["guardian_name"],
-                request.form["parent_email"], request.form["grade_level"],
-                hashed_pass, pin_value,
-                request.form["security_q1"], request.form["security_a1"],
-                request.form["security_q2"], request.form["security_a2"],
-                request.form["security_q3"], request.form["security_a3"]
-            )
+            env = Environment(loader=FileSystemLoader("templates"))
+            template = env.get_template("otp_template.html")
+            body_html = template.render(otp=otp, role="student")
+
+            body_text = f"Hello Student,\n\nYour OTP is: {otp} (expires in 5 minutes).\n\nUse this to access your student dashboard."
+
+            send_email([email], "Your Secure OTP Code", body_text, body_html)
+
+            flash("We sent an OTP to your email. Please verify.", "info")
+            return redirect(url_for("verify_otp"))
+
+        except Exception as e:
+            flash(f"General error: {str(e)}", "error")
+            return redirect(url_for("signup_student"))
+
+    return render_template("signup_student.html")
+
+
+       
+
+
+@app.route("/generate_all_qr")
+def generate_all_qr():
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT student_id FROM students WHERE qr_code IS NULL OR qr_code=''")
+        students = cursor.fetchall()
+
+        count = 0
+        for (student_id,) in students:
+            qr_path = generate_qr(student_id)
+            cursor.execute("UPDATE students SET qr_code=%s WHERE student_id=%s", (qr_path, student_id))
+            count += 1
+
+        conn.commit()
+        conn.close()
+        return f"✅ Generated QR codes for {count} students."
+    except Exception as e:
+        return f"❌ Error generating QR codes: {str(e)}"
+
+@app.route("/setup_pin", methods=["GET","POST"])
+def setup_pin():
+    try:
+        if request.method == "POST":
+            pin = request.form.get("pin")
+            if not re.match(r"^\d{4}$", pin):
+                flash("❌ PIN must be 4 digits.", "error")
+                return redirect(url_for("setup_pin"))
+
+            data = session.get("pending_signup")
+            if not data:
+                flash("❌ No signup data found.", "error")
+                return redirect(url_for("signup_student"))
 
             conn = get_connection()
             cursor = conn.cursor()
             cursor.execute("""INSERT INTO students 
                 (full_name, school_id, email, contact_number, strand, guardian_name, parent_email, grade_level,
-                 password, pin, security_q1, security_a1, security_q2, security_a2, security_q3, security_a3) 
-                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""", data)
+                 password, pin, security_q1, security_a1, security_q2, security_a2, security_q3, security_a3)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
+                (data["full_name"], data["school_id"], data["email"], data["contact_number"], data["strand"],
+                 data["guardian_name"], data["parent_email"], data["grade_level"], data["hashed_pass"], pin,
+                 data["security_q1"], data["security_a1"], data["security_q2"], data["security_a2"],
+                 data["security_q3"], data["security_a3"])
+            )
             conn.commit()
 
-            # ✅ Verify insertion
-            cursor.execute("SELECT full_name, email FROM students WHERE email=%s", (request.form["email"],))
-            student = cursor.fetchone()
+            cursor.execute("SELECT student_id FROM students WHERE email=%s", (data["email"],))
+            student_id = cursor.fetchone()[0]
+            qr_path = generate_qr(student_id)
+            cursor.execute("UPDATE students SET qr_code=%s WHERE student_id=%s", (qr_path, student_id))
+            conn.commit()
             conn.close()
 
-            if student:
-                flash(f"Signup successful for {student[0]} ({student[1]}). Please log in.", "success")
-                return redirect(url_for("signin_student"))
-            else:
-                flash("Signup failed. Please try again.", "error")
-                return redirect(url_for("signup_student"))
+            flash("🎉 Account created successfully!", "success")
+            session.pop("pending_signup", None)
+            session.pop("pending_otp", None)
+            return redirect(url_for("signin_student"))
 
-        except Exception as e:
-            flash(f"Database error: {str(e)}", "error")
-            return redirect(url_for("signup_student"))
+        return render_template("setup_pin.html")
+    except Exception as e:
+        flash(f"Error setting PIN: {str(e)}", "error")
+        return redirect(url_for("signup_student"))
 
-    return render_template("signup_student.html")
+
+
+
+
+
+
+@app.route("/confirm_signup", methods=["GET","POST"])
+def confirm_signup():
+    email = session.get("pending_email")
+    if not email:
+        flash("No pending signup found.", "error")
+        return redirect(url_for("signup_student"))
+
+    if request.method == "POST":
+        otp = request.form["otp"]
+
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT otp_code, expires_at FROM otps WHERE email=%s ORDER BY id DESC LIMIT 1", (email,))
+        record = cursor.fetchone()
+        conn.close()
+
+        if record and record[0] == otp and datetime.datetime.now() < record[1]:
+            flash("Signup confirmed! Please log in.", "success")
+            return redirect(url_for("signin_student"))
+        else:
+            flash("Invalid or expired confirmation code.", "error")
+            return redirect(url_for("confirm_signup"))
+
+    return render_template("confirm_signup.html", email=email)
+
 
 
 # ---------------- Admin Sign Up ----------------
@@ -635,30 +848,39 @@ def signup_staff():
 @app.route("/signin/student", methods=["GET","POST"])
 def signin_student():
     if request.method == "POST":
-        email = request.form["email"]
-        password = request.form["password"]
+        email = request.form.get("email")
+        password = request.form.get("password")
 
         conn = get_connection()
         cursor = conn.cursor()
-        cursor.execute("SELECT student_id, email, password FROM students WHERE email=%s", (email,))
+        cursor.execute("SELECT student_id, password FROM students WHERE email=%s", (email,))
         student = cursor.fetchone()
         conn.close()
 
-        if student and check_password_hash(student[2], password):
-            session["pending_email"] = student[1]
-            session["role"] = "student"
-            session["student_id"] = student[0]
+        if student and check_password_hash(student[1], password):
+            try:
+                otp = str(random.randint(100000, 999999))
+                session["role"] = "student"       # ✅ unified role
+                session["pending_email"] = email  # ✅ store email
+                session["pending_otp"] = otp
 
-            # 🔹 Send OTP with student subject
-            generate_and_send_otp(email, subject="Your Student OTP Code", role="student")
+                env = Environment(loader=FileSystemLoader("templates"))
+                template = env.get_template("otp_template.html")
+                body_html = template.render(otp=otp, role="student")
+                body_text = f"Hello Student,\n\nYour login OTP is: {otp} (expires in 5 minutes)."
 
-            return redirect(url_for("verify_otp"))
+                send_email([email], "Your Secure Login OTP", body_text, body_html)
+
+                flash("OTP sent to your email. Please verify.", "info")
+                return redirect(url_for("verify_otp"))
+            except Exception as e:
+                flash(f"Error sending OTP: {str(e)}", "error")
+                return redirect(url_for("signin_student"))
         else:
-            flash("Invalid student credentials.", "error")
+            flash("❌ Invalid credentials.", "error")
             return redirect(url_for("signin_student"))
 
     return render_template("signin_student.html")
-
 
 
 
@@ -666,29 +888,42 @@ def signin_student():
 @app.route("/signin/admin", methods=["GET","POST"])
 def signin_admin():
     if request.method == "POST":
-        email = request.form["email"]
-        password = request.form["password"]
+        email = request.form.get("email")
+        password = request.form.get("password")
 
         conn = get_connection()
         cursor = conn.cursor()
-        cursor.execute("SELECT admin_id, email, password FROM admins WHERE email=%s", (email,))
+        cursor.execute("SELECT admin_id, password FROM admins WHERE email=%s", (email,))
         admin = cursor.fetchone()
         conn.close()
 
-        if admin and check_password_hash(admin[2], password):
-            session["pending_email"] = admin[1]
-            session["role"] = "admin"
-            session["admin_id"] = admin[0]
+        if admin and check_password_hash(admin[1], password):
+            try:
+                otp = str(random.randint(100000, 999999))
+                session["role"] = "admin"          # ✅ unified role
+                session["pending_email"] = email   # ✅ store email
+                session["pending_otp"] = otp
+                session["admin_id"] = admin[0]     # ✅ store admin_id
 
-            # 🔹 Send OTP with admin subject
-            generate_and_send_otp(email, subject="Your Admin OTP Code", role="admin")
+                env = Environment(loader=FileSystemLoader("templates"))
+                template = env.get_template("otp_template.html")
+                body_html = template.render(otp=otp, role="admin")
+                body_text = f"Hello Admin,\n\nYour login OTP is: {otp} (expires in 5 minutes)."
 
-            return redirect(url_for("verify_otp"))
+                send_email([email], "Your Admin Secure Login OTP", body_text, body_html)
+
+                flash("OTP sent to your email. Please verify.", "info")
+                return redirect(url_for("verify_otp"))
+            except Exception as e:
+                flash(f"Error sending OTP: {str(e)}", "error")
+                return redirect(url_for("signin_admin"))
         else:
-            flash("Invalid admin credentials.", "error")
+            flash("❌ Invalid credentials.", "error")
             return redirect(url_for("signin_admin"))
 
     return render_template("signin_admin.html")
+
+
 
 
 
@@ -697,29 +932,41 @@ def signin_admin():
 @app.route("/signin/staff", methods=["GET","POST"])
 def signin_staff():
     if request.method == "POST":
-        email = request.form["email"]
-        password = request.form["password"]
+        email = request.form.get("email")
+        password = request.form.get("password")
 
         conn = get_connection()
         cursor = conn.cursor()
-        cursor.execute("SELECT staff_id, email, password FROM staff WHERE email=%s", (email,))
+        cursor.execute("SELECT staff_id, password FROM staff WHERE email=%s", (email,))
         staff = cursor.fetchone()
         conn.close()
 
-        if staff and check_password_hash(staff[2], password):
-            session["pending_email"] = staff[1]
-            session["role"] = "staff"
-            session["staff_id"] = staff[0]
+        if staff and check_password_hash(staff[1], password):
+            try:
+                otp = str(random.randint(100000, 999999))
+                session["role"] = "staff"          # ✅ unified role
+                session["pending_email"] = email   # ✅ store email
+                session["pending_otp"] = otp
+                session["staff_id"] = staff[0]     # ✅ store staff_id
 
-            # 🔹 Send OTP with staff subject
-            generate_and_send_otp(email, subject="Your Staff OTP Code", role="staff")
+                env = Environment(loader=FileSystemLoader("templates"))
+                template = env.get_template("otp_template.html")
+                body_html = template.render(otp=otp, role="staff")
+                body_text = f"Hello Staff,\n\nYour login OTP is: {otp} (expires in 5 minutes)."
 
-            return redirect(url_for("verify_otp"))
+                send_email([email], "Your Staff Secure Login OTP", body_text, body_html)
+
+                flash("OTP sent to your email. Please verify.", "info")
+                return redirect(url_for("verify_otp"))
+            except Exception as e:
+                flash(f"Error sending OTP: {str(e)}", "error")
+                return redirect(url_for("signin_staff"))
         else:
-            flash("Invalid staff credentials.", "error")
+            flash("❌ Invalid credentials.", "error")
             return redirect(url_for("signin_staff"))
 
     return render_template("signin_staff.html")
+
 
 
 
@@ -786,33 +1033,77 @@ def reset_password_staff():
 
 
 # ---------------- Verify OTP ----------------
-@app.route("/verify_otp", methods=["GET", "POST"])
+@app.route("/verify_otp", methods=["GET","POST"])
 def verify_otp():
-    if request.method == "POST":
-        otp = request.form["otp"]
-        email = session.get("pending_email")
+    try:
+        if request.method == "POST":
+            entered_otp = request.form.get("otp")
+            if entered_otp == session.get("pending_otp"):
+                role = session.get("role")  # ✅ unified role
 
-        conn = get_connection()
-        cursor = conn.cursor()
-        cursor.execute("SELECT otp_code, expires_at FROM otps WHERE email=%s ORDER BY id DESC LIMIT 1", (email,))
-        record = cursor.fetchone()
-        conn.close()
+                # Case 1: Student Signup flow
+                if role == "student" and session.get("student_signup"):
+                    student_data = session["pending_signup"]
+                    student_id = student_data["school_id"]
 
-        if record and record[0] == otp and datetime.datetime.now() < record[1]:
-            session["email"] = email
-            # ✅ Student-only PIN step
-            if session.get("role") == "student":
-                return redirect(url_for("verify_pin"))
-            # Admin/staff go straight to dashboard
-            elif session.get("role") == "admin":
-                return redirect(url_for("dashboard_admin"))
+                    qr_path = generate_fixed_qr(student_id)
+
+                    conn = get_connection()
+                    cursor = conn.cursor()
+                    cursor.execute("""
+                        INSERT INTO students (full_name, school_id, email, parent_email, contact_number,
+                                              strand, guardian_name, grade_level, password, security_q1,
+                                              security_a1, security_q2, security_a2, security_q3, security_a3, qr_code)
+                        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                    """, (
+                        student_data["full_name"], student_data["school_id"], student_data["email"],
+                        student_data["parent_email"], student_data["contact_number"], student_data["strand"],
+                        student_data["guardian_name"], student_data["grade_level"], student_data["hashed_pass"],
+                        student_data["security_q1"], student_data["security_a1"], student_data["security_q2"],
+                        student_data["security_a2"], student_data["security_q3"], student_data["security_a3"],
+                        qr_path
+                    ))
+                    conn.commit()
+                    conn.close()
+
+                    flash("✅ OTP verified! Please set your PIN.", "success")
+                    return redirect(url_for("setup_pin"))
+
+                # Case 2: Student Signin flow
+                elif role == "student":
+                    session["email"] = session.get("pending_email")   # promote email
+                    flash("✅ OTP verified! Please enter your PIN.", "success")
+                    return redirect(url_for("verify_pin"))
+
+                # Case 3: Admin Signin flow
+                elif role == "admin":
+                    session["email"] = session.get("pending_email")   # promote email
+                    flash("✅ Admin OTP verified! Redirecting to dashboard...", "success")
+                    return redirect(url_for("dashboard_admin"))
+
+                # Case 4: Staff Signin flow
+                elif role == "staff":
+                    session["email"] = session.get("pending_email")   # promote email
+                    flash("✅ Staff OTP verified! Redirecting to dashboard...", "success")
+                    return redirect(url_for("dashboard_staff"))
+
+                else:
+                    flash("⚠️ No signup or signin context found.", "error")
+                    return redirect(url_for("login"))
+
             else:
-                return redirect(url_for("dashboard_staff"))
-        else:
-            flash("Invalid or expired OTP.", "error")
-            return redirect(url_for("verify_otp"))
+                flash("❌ Invalid OTP. Try again.", "error")
+                return redirect(url_for("verify_otp"))
 
-    return render_template("otp.html")
+        return render_template("verify_otp.html")
+    except Exception as e:
+        flash(f"Error verifying OTP: {str(e)}", "error")
+        return redirect(url_for("login"))
+
+
+
+
+
 
 
 @app.route("/forgot_pin", methods=["GET", "POST"])
@@ -872,28 +1163,33 @@ def reset_pin():
 def verify_pin():
     if request.method == "POST":
         entered_pin = request.form["pin"]
-        email = session.get("email")
+        email = session.get("pending_email")  # ✅ fixed
 
         conn = get_connection()
         cursor = conn.cursor()
-        cursor.execute("SELECT pin FROM students WHERE email=%s", (email,))
+        cursor.execute("SELECT student_id, pin FROM students WHERE email=%s", (email,))
         record = cursor.fetchone()
         conn.close()
 
-        if record and str(record[0]) == entered_pin:
-            # PIN correct → redirect to dashboard based on role
+        if record and str(record[1]) == str(entered_pin):
             role = session.get("role")
             if role == "student":
+                session["student_id"] = record[0]  # ✅ store student_id
+                session["email"] = email           # ✅ store email for dashboard queries
                 return redirect(url_for("dashboard_student"))
             elif role == "admin":
                 return redirect(url_for("dashboard_admin"))
-            else:
+            elif role == "staff":
                 return redirect(url_for("dashboard_staff"))
+            else:
+                flash("Unknown role.", "error")
+                return redirect(url_for("login_page"))
         else:
             flash("Invalid PIN. Try again.", "error")
             return redirect(url_for("verify_pin"))
 
     return render_template("verify_pin.html")
+
 
 @app.route("/resend_otp")
 def resend_otp():
@@ -917,7 +1213,7 @@ def dashboard_student():
         return redirect(url_for("signin_student"))
 
     conn = get_connection()
-    cursor = conn.cursor(dictionary=True)
+    cursor = conn.cursor(cursorclass=MySQLdb.cursors.DictCursor)
 
     # Student info
     cursor.execute("""
@@ -933,9 +1229,10 @@ def dashboard_student():
                 WHEN t.type = 'topup' THEN 'Top-Up'
                 WHEN t.type = 'purchase' THEN 'Purchase'
                 ELSE t.type
-            END AS txn_type,
+            END AS type,
             t.amount,
             t.created_at,
+            t.status,
             COALESCE(s.full_name, a.full_name) AS performed_by
         FROM transactions t
         LEFT JOIN staff s ON t.staff_id = s.staff_id
@@ -943,9 +1240,9 @@ def dashboard_student():
         WHERE t.student_id = %s
         ORDER BY t.created_at DESC
     """, (student["student_id"],))
-    history = cursor.fetchall()
+    transactions = cursor.fetchall()
 
-    # Balance trend (safe handling of NULLs)
+    # Balance trend
     cursor.execute("""
         SELECT DATE(created_at) AS date, new_balance
         FROM transactions
@@ -957,15 +1254,108 @@ def dashboard_student():
     balance_dates = [row["date"].strftime("%Y-%m-%d") for row in balance_data]
     balance_values = [float(row["new_balance"]) if row["new_balance"] is not None else 0.0 for row in balance_data]
 
+    # ⚠️ Do not manually close conn here — Flask handles teardown
+    # conn.close()
+
+    # ✅ Safe render_template return
+    return render_template(
+        "dashboard_student.html",
+        student=student,
+        transactions=transactions,
+        balance_dates=balance_dates,
+        balance_values=balance_values
+    )
+
+
+# ---------------- Fixed QR ----------------
+@app.route("/fixed_qr", methods=["POST"])
+def fixed_qr():
+    pin = request.form.get("pin")
+    student_id = session.get("student_id")
+
+    if not student_id:
+        return "No student logged in", 401
+
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT pin, qr_code FROM students WHERE student_id=%s", (student_id,))
+    record = cursor.fetchone()
+    # ⚠️ Do not manually close conn here — Flask handles teardown
+
+    if not record:
+        return "Student not found", 404
+
+    # Debug logs
+    print("Entered PIN:", pin)
+    print("DB PIN:", record[0])
+    print("QR Path:", record[1])
+
+    if str(record[0]).strip() == str(pin).strip():
+        qr_path = record[1]
+        if not qr_path or not os.path.exists(qr_path):
+            return "QR file not found", 404
+        return send_file(qr_path, mimetype="image/png")
+    else:
+        return "Invalid PIN", 401
+
+
+
+@app.route("/download_fixed_qr")
+def download_fixed_qr():
+    try:
+        student_id = session.get("student_id")
+        if not student_id:
+            flash("⚠️ No student logged in.", "error")
+            return redirect(url_for("signin_student"))
+
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT qr_code FROM students WHERE student_id=%s", (student_id,))
+        record = cursor.fetchone()
+        conn.close()
+
+        if record and record[0]:
+            qr_path = record[0]
+
+            # Ensure absolute path
+            if not os.path.isabs(qr_path):
+                qr_path = os.path.join(os.getcwd(), qr_path)
+
+            if os.path.exists(qr_path):
+                return send_file(
+                    qr_path,
+                    mimetype="image/png",
+                    as_attachment=True,   # 🔹 forces download
+                    download_name=f"{student_id}_fixed_qr.png"  # 🔹 sets filename
+                )
+            else:
+                flash("❌ QR file not found on disk.", "error")
+                return redirect(url_for("dashboard_student"))
+        else:
+            flash("❌ QR not found in database.", "error")
+            return redirect(url_for("dashboard_student"))
+    except Exception as e:
+        flash(f"Error downloading QR: {str(e)}", "error")
+        return redirect(url_for("dashboard_student"))
+
+
+
+
+# ---------------- Scan Staff QR ----------------
+@app.route("/scan_staff_qr", methods=["POST"])
+def scan_staff_qr():
+    qr_value = request.form.get("qr")
+
+    conn = get_connection()
+    cursor = conn.cursor(cursorclass=MySQLdb.cursors.DictCursor)
+    cursor.execute("SELECT * FROM staff WHERE staff_qr=%s", (qr_value,))
+    staff = cursor.fetchone()
     conn.close()
 
-    return render_template("dashboard_student.html",
-                           student=student,
-                           history=history,
-                           balance_dates=balance_dates,
-                           balance_values=balance_values)
-
-
+    if staff:
+        return jsonify(success=True, staff=staff)
+    else:
+        return jsonify(success=False, message="Invalid staff QR"), 400
 
 
 
@@ -975,7 +1365,7 @@ def download_transactions_pdf():
         return redirect(url_for("signin_student"))
 
     conn = get_connection()
-    cursor = conn.cursor(dictionary=True)
+    cursor = conn.cursor(cursorclass=MySQLdb.cursors.DictCursor)
     cursor.execute("""
         SELECT 
             CASE 
@@ -1041,7 +1431,7 @@ def topup():
 
     # Get student_id
     conn = get_connection()
-    cursor = conn.cursor(dictionary=True)
+    cursor = conn.cursor(cursorclass=MySQLdb.cursors.DictCursor)
     cursor.execute("SELECT student_id FROM students WHERE email=%s", (session["email"],))
     student = cursor.fetchone()
 
@@ -1070,38 +1460,107 @@ def topup():
     flash("Top-up submitted and awaiting admin approval.", "info")
     return redirect(url_for("dashboard_student"))
 
+@app.route("/submit_topup", methods=["POST"])
+def submit_topup():
+    gcash_number = request.form.get("gcash_number")
+    gcash_owner = request.form.get("gcash_owner")
+    reference_number = request.form.get("reference_number")
+    amount = request.form.get("amount")
+    proof = request.files.get("proof")
+
+    if not all([gcash_number, gcash_owner, reference_number, amount, proof]):
+        flash("All fields are required.", "error")
+        return redirect(url_for("dashboard_student"))
+
+    filename = secure_filename(proof.filename)
+    proof.save(os.path.join(app.config["UPLOAD_FOLDER"], filename))
+
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+        INSERT INTO topups (student_id, gcash_number, gcash_owner, reference_number, amount, proof_image, status)
+        VALUES (%s, %s, %s, %s, %s, %s, 'pending')
+    """, (session["student_id"], gcash_number, gcash_owner, reference_number, amount, filename))
+    conn.commit()
+    conn.close()
+
+    flash("Top-up request submitted. Please wait for admin approval.", "success")
+    return redirect(url_for("dashboard_student"))
+
+
+
+
+# ---------------- Parent Top-Up ----------------
+@app.route("/parent_topup/<int:student_id>", methods=["GET","POST"])
+def parent_topup(student_id):
+    conn = get_connection()
+    cursor = conn.cursor(cursorclass=MySQLdb.cursors.DictCursor)
+
+    # Get student info
+    cursor.execute("SELECT student_id, full_name FROM students WHERE student_id=%s", (student_id,))
+    student = cursor.fetchone()
+
+    if not student:
+        conn.close()
+        flash("Student not found.", "error")
+        return redirect(url_for("signup_student"))
+
+    if request.method == "POST":
+        amount = request.form["amount"]
+        payment_mode = request.form["payment_mode"]
+        reference_number = request.form["reference_number"]
+
+        # Insert into topups table with pending status
+        cursor.execute("""
+            INSERT INTO topups (student_id, amount, payment_mode, reference_number, status, created_at)
+            VALUES (%s, %s, %s, %s, 'pending', NOW())
+        """, (student_id, amount, payment_mode, reference_number))
+        conn.commit()
+        conn.close()
+
+        flash("Top-up request submitted successfully! Awaiting admin approval.", "success")
+        return redirect(url_for("parent_topup", student_id=student_id))
+
+    conn.close()
+    return render_template("parent_topup.html", student=student)
 
 
 # ---------------- Generate QR (unique each time) ----------------
-# Generate dynamic QR for student
 @app.route("/generate_qr")
 def generate_qr():
-    student_id = session.get("student_id")
-    qr = qrcode.make(str(student_id))
-    filepath = os.path.join("static", f"qr_{student_id}.jpg")
-    qr.save(filepath)
-    return send_file(filepath, mimetype="image/jpeg")
+    if "student_id" not in session:
+        return redirect(url_for("signin_student"))
 
-# Fixed QR for student
-@app.route("/fixed_qr/<int:student_id>")
-def fixed_qr(student_id):
-    filepath = os.path.join("static", f"fixed_qr_{student_id}.jpg")
-    if not os.path.exists(filepath):
-        qr = qrcode.make(str(student_id))
-        qr.save(filepath)
-    return send_file(filepath, mimetype="image/jpeg")
+    student_id = session["student_id"]
 
-@app.route("/download_fixed_qr/<int:student_id>")
-def download_fixed_qr(student_id):
-    filepath = os.path.join("static", f"fixed_qr_{student_id}.jpg")
-    return send_file(filepath, as_attachment=True)
+    # Add timestamp to make QR unique each time
+    unique_data = f"{student_id}-{int(time.time())}"
 
+    qr_img = qrcode.make(unique_data)
+    img_io = io.BytesIO()
+    qr_img.save(img_io, 'PNG')
+    img_io.seek(0)
 
+    return send_file(img_io, mimetype='image/png')
+
+def generate_staff_qr(staff_id):
+    qr_img = qrcode.make(staff_id)
+    qr_path = f"static/staff_qrcodes/{staff_id}.png"
+    os.makedirs("static/staff_qrcodes", exist_ok=True)
+    qr_img.save(qr_path)
+
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("UPDATE staff SET staff_qr=%s WHERE staff_id=%s", (qr_path, staff_id))
+    conn.commit()
+    conn.close()
 # ---------------- Admin Dashboard ----------------
+
 @app.route('/admin/dashboard')
 def dashboard_admin():
     conn = get_connection()
-    cursor = conn.cursor(dictionary=True)
+    cursor = conn.cursor(cursorclass=MySQLdb.cursors.DictCursor)
+
 
     # ✅ Fetch logged-in admin details from the admins table
     cursor.execute("SELECT full_name, email, contact_number FROM admins WHERE admin_id=%s", (session["admin_id"],))
@@ -1198,7 +1657,6 @@ def dashboard_admin():
     """)
     unregistered_transactions = cursor.fetchall() or []
 
-    conn.close()
 
     return render_template(
         "dashboard_admin.html",
@@ -1256,7 +1714,7 @@ def manual_topup():
 def search_students():
     query = request.args.get("q", "")
     conn = get_connection()
-    cursor = conn.cursor(dictionary=True)
+    cursor = conn.cursor(cursorclass=MySQLdb.cursors.DictCursor)
     cursor.execute("SELECT student_id, full_name, school_id, balance FROM students WHERE full_name LIKE %s", ("%" + query + "%",))
     results = cursor.fetchall()
     conn.close()
@@ -1294,45 +1752,85 @@ def admin_topup():
 
 
 # ---------------- Approve Top-Up ----------------
-@app.route('/approve_topup/<int:topup_id>', methods=['POST'])
+@app.route("/admin/approve_topup/<int:topup_id>", methods=["POST"])
 def approve_topup(topup_id):
+    if "email" not in session or session.get("role") != "admin":
+        flash("Unauthorized access.", "error")
+        return redirect(url_for("signin_admin"))
+
     conn = get_connection()
-    cursor = conn.cursor(dictionary=True)
+    cursor = conn.cursor(cursorclass=MySQLdb.cursors.DictCursor)
 
-    # Get topup details
-    cursor.execute("SELECT student_id, amount, method FROM topups WHERE topup_id=%s", (topup_id,))
-    topup = cursor.fetchone()
-    if not topup:
-        conn.close()
-        return jsonify(success=False, message="Top-up not found")
-
-    student_id = topup["student_id"]
-    amount = float(topup["amount"])
-    method = topup["method"]
-
-    # 🔹 Map topups.method → transactions.payment_mode
-    if method == "ewallet":
-        payment_mode = "gcash"
-    elif method == "bank":
-        payment_mode = "bank"
-    else:
-        payment_mode = "cash"
-
-    # Update balance
-    cursor.execute("UPDATE students SET balance = balance + %s WHERE student_id=%s", (amount, student_id))
-
-    # Insert transaction
+    # Get top-up info
     cursor.execute("""
-        INSERT INTO transactions (student_id, amount, status, remarks, created_at, type, admin_id, payment_mode)
-        VALUES (%s, %s, 'completed', 'Approved top-up', NOW(), 'topup', %s, %s)
-    """, (student_id, amount, session.get("admin_id"), payment_mode))
+        SELECT t.topup_id, t.student_id, t.amount, s.full_name, s.parent_email
+        FROM topups t
+        JOIN students s ON t.student_id = s.student_id
+        WHERE t.topup_id=%s AND t.status='pending'
+    """, (topup_id,))
+    topup = cursor.fetchone()
 
-    # Update topup status
-    cursor.execute("UPDATE topups SET status='approved' WHERE topup_id=%s", (topup_id,))
-    conn.commit()
-    conn.close()
+    if topup:
+        # Update student balance
+        cursor.execute("UPDATE students SET balance = balance + %s WHERE student_id=%s",
+                       (topup["amount"], topup["student_id"]))
+        # Mark top-up as completed
+        cursor.execute("UPDATE topups SET status='completed' WHERE topup_id=%s", (topup_id,))
+        conn.commit()
+        conn.close()
 
-    return jsonify(success=True, message="Top-up approved")
+        # 🔹 Notify parent
+        send_email(
+            to=topup["parent_email"],
+            subject="Top-Up Approved",
+            body=f"Dear Parent,\n\nYour top-up request of ₱{topup['amount']} for {topup['full_name']} has been approved and credited.\n\nRegards,\nFCD System"
+        )
+
+        flash("Top-up approved successfully.", "success")
+    else:
+        conn.close()
+        flash("Top-up not found or already processed.", "error")
+
+    return redirect(url_for("admin_pending_topups"))
+
+
+@app.route("/admin/reject_topup/<int:topup_id>", methods=["POST"])
+def reject_topup(topup_id):
+    if "email" not in session or session.get("role") != "admin":
+        flash("Unauthorized access.", "error")
+        return redirect(url_for("signin_admin"))
+
+    conn = get_connection()
+    cursor = conn.cursor(cursorclass=MySQLdb.cursors.DictCursor)
+
+    # Get top-up info
+    cursor.execute("""
+        SELECT t.topup_id, t.amount, s.full_name, s.parent_email
+        FROM topups t
+        JOIN students s ON t.student_id = s.student_id
+        WHERE t.topup_id=%s AND t.status='pending'
+    """, (topup_id,))
+    topup = cursor.fetchone()
+
+    if topup:
+        cursor.execute("UPDATE topups SET status='rejected' WHERE topup_id=%s", (topup_id,))
+        conn.commit()
+        conn.close()
+
+        # 🔹 Notify parent
+        send_email(
+            to=topup["parent_email"],
+            subject="Top-Up Rejected",
+            body=f"Dear Parent,\n\nYour top-up request of ₱{topup['amount']} for {topup['full_name']} has been rejected by the admin. Please contact the school office for assistance.\n\nRegards,\nFCD System"
+        )
+
+        flash("Top-up rejected.", "info")
+    else:
+        conn.close()
+        flash("Top-up not found or already processed.", "error")
+
+    return redirect(url_for("admin_pending_topups"))
+
 
 
 # ---------------- Reverse Top-Up ----------------
@@ -1344,7 +1842,7 @@ def reverse_topup(transaction_id):
         return jsonify({"success": False, "message": "Unauthorized"}), 403
 
     conn = get_connection()
-    cursor = conn.cursor(dictionary=True)
+    cursor = conn.cursor(cursorclass=MySQLdb.cursors.DictCursor)
 
     # 🔹 Get the original transaction
     cursor.execute("""
@@ -1404,7 +1902,7 @@ def edit_transaction(transaction_id):
 
     new_amount = float(request.form["amount"])
     conn = get_connection()
-    cursor = conn.cursor(dictionary=True)
+    cursor = conn.cursor(cursorclass=MySQLdb.cursors.DictCursor)
 
     cursor.execute("SELECT student_id, amount FROM transactions WHERE transaction_id=%s", (transaction_id,))
     txn = cursor.fetchone()
@@ -1439,24 +1937,13 @@ def delete_transaction(transaction_id):
         return redirect(url_for("signin_admin"))
 
     conn = get_connection()
-    cursor = conn.cursor()
+    cursor = conn.cursor(cursorclass=MySQLdb.cursors.DictCursor)
     cursor.execute("DELETE FROM transactions WHERE transaction_id=%s", (transaction_id,))
     conn.commit()
     conn.close()
 
     flash("Transaction deleted.", "success")
     return redirect(url_for("dashboard_admin"))
-
-
-# Reject Top-Up
-@app.route('/reject_topup/<int:topup_id>', methods=['POST'])
-def reject_topup(topup_id):
-    conn = get_connection()
-    cursor = conn.cursor()
-    cursor.execute("UPDATE topups SET status='rejected' WHERE topup_id=%s", (topup_id,))
-    conn.commit()
-    conn.close()
-    return jsonify(success=True, message="Top-up rejected")
 
 
 
@@ -1468,7 +1955,7 @@ def dashboard_staff():
         return redirect(url_for("signin_staff"))
 
     conn = get_connection()
-    cursor = conn.cursor(dictionary=True)
+    cursor = conn.cursor(cursorclass=MySQLdb.cursors.DictCursor)
 
     # Staff profile
     cursor.execute("SELECT staff_id, full_name, email, contact_number, created_at FROM staff WHERE email=%s",
@@ -1546,7 +2033,6 @@ def dashboard_staff():
     """, (session["staff_id"],))
     visitors_total = cursor.fetchone()["total"] or 0
 
-    conn.close()
     return render_template("dashboard_staff.html",
                            staff=staff,
                            staff_id=session["staff_id"],
@@ -1564,35 +2050,100 @@ def dashboard_staff():
                            total_sales=total_sales,
                            visitors_total=visitors_total)
 
-# ---------------- Manual Purchase (Visitor/Personnel) ----------------
-@app.route("/staff_manual_purchase", methods=["POST"])
-def staff_manual_purchase():
-    if "email" not in session or session.get("role") != "staff":
-        return redirect(url_for("signin_staff"))
+# Scan QR
+@app.route("/staff_qr_transaction", methods=["POST"])
+def staff_qr_transaction():
+    data = request.get_json()
+    student_qr = data.get("studentQr")
+    amount = data.get("amount")
+    mode = data.get("mode")
+    cart = data.get("cart", [])
 
-    customer_name = request.form["customer_name"]   # visitor/personnel name
-    amount = float(request.form["amount"])
-    payment_mode = request.form["payment_mode"]     # 'cash' or 'gcash'
-    staff_id = session.get("staff_id")
+    student = Student.query.filter_by(qr_code=student_qr).first()
+    if not student:
+        return jsonify({"success": False, "message": "Student not found!"})
 
-    conn = get_connection()
-    cursor = conn.cursor()
+    if student.balance < amount:
+        return jsonify({"success": False, "message": "Insufficient balance!"})
 
-    cursor.execute("""
-        INSERT INTO transactions (customer_name, staff_id, amount, status, remarks, created_at, type, admin_id, payment_mode)
-        VALUES (%s,%s,%s,'completed','Manual purchase (visitor/personnel)',NOW(),'purchase',%s,%s)
-    """, (
-        customer_name,
-        staff_id,
-        amount,
-        session.get("admin_id"),
-        payment_mode
-    ))
+    student.balance -= amount
+    txn = Transaction(student_id=student.id, amount=amount, mode=mode, items=json.dumps(cart))
+    db.session.add_all([student, txn])
+    db.session.commit()
 
-    conn.commit()
-    conn.close()
+    return jsonify({"success": True, "student_name": student.name})
 
-    return "Manual purchase transaction recorded."
+# Search Student
+@app.route("/staff_search_student_transaction", methods=["POST"])
+def staff_search_student_transaction():
+    try:
+        data = request.get_json()
+        print("Incoming payload:", data)  # ✅ Debug print
+
+        school_id = data.get("school_id")
+        amount = float(data.get("amount", 0))
+        cart = data.get("cart", [])
+
+        # Lookup student by school_id
+        student = Student.query.filter_by(school_id=school_id).first()
+        if not student:
+            return jsonify({"success": False, "message": "Student not found!"})
+
+        # Ensure balance is numeric
+        if student.balance is None:
+            student.balance = 0
+
+        if student.balance < amount:
+            return jsonify({"success": False, "message": "Insufficient balance!"})
+
+        # Deduct balance
+        student.balance -= amount
+
+        # Record transaction
+        txn = Transaction(
+            student_id=student.id,
+            amount=amount,
+            items=json.dumps(cart)  # ✅ cart must be serializable
+        )
+        db.session.add_all([student, txn])
+        db.session.commit()
+
+        return jsonify({"success": True, "student_name": student.full_name})
+
+    except Exception as e:
+        print("Error in staff_search_student_transaction:", e)  # ✅ Debug print
+        db.session.rollback()
+        return jsonify({"success": False, "message": "Server error"})
+
+
+# Unregistered Student
+@app.route("/staff_unregistered_transaction", methods=["POST"])
+def staff_unregistered_transaction():
+    data = request.get_json()
+    school_id = data.get("schoolId")
+    amount = data.get("amount")
+    mode = data.get("mode")
+    cart = data.get("cart", [])
+
+    txn = Transaction(unregistered_id=school_id, amount=amount, mode=mode, items=json.dumps(cart))
+    db.session.add(txn)
+    db.session.commit()
+
+    return jsonify({"success": True, "message": "Unregistered transaction recorded!"})
+
+# Visitor/Personnel
+@app.route("/staff_visitor_transaction", methods=["POST"])
+def staff_visitor_transaction():
+    data = request.get_json()
+    amount = data.get("amount")
+    mode = data.get("mode")
+    cart = data.get("cart", [])
+
+    txn = Transaction(visitor=True, amount=amount, mode=mode, items=json.dumps(cart))
+    db.session.add(txn)
+    db.session.commit()
+
+    return jsonify({"success": True, "message": "Visitor transaction recorded!"})
 
 
 @app.route("/purchase_unregistered", methods=["POST"])
@@ -1604,7 +2155,7 @@ def purchase_unregistered():
     amount = float(request.form["amount"])
 
     conn = get_connection()
-    cursor = conn.cursor()
+    cursor = conn.cursor(cursorclass=MySQLdb.cursors.DictCursor)
 
     cursor.execute("""
         INSERT INTO transactions (student_id, customer_name, staff_id, amount, status, type, payment_mode, created_at)
@@ -1617,25 +2168,27 @@ def purchase_unregistered():
     flash("Unregistered purchase recorded successfully.", "success")
     return redirect(url_for("dashboard_admin"))
 
-@app.route("/staff_search_student/<string:query>")
-def staff_search_student(query):
-    conn = get_connection()
-    cursor = conn.cursor(dictionary=True)
-    cursor.execute("SELECT school_id, full_name, balance FROM students WHERE school_id LIKE %s LIMIT 1", (query+"%",))
-    student = cursor.fetchone()
-    conn.close()
-    if student:
-        return jsonify({"success": True, "student": student})
-    return jsonify({"success": False, "message": "No student found."})
 
 @app.route("/staff_students")
 def staff_students():
+    school_id = request.args.get("id")
     conn = get_connection()
-    cursor = conn.cursor(dictionary=True)
-    cursor.execute("SELECT student_id, full_name, school_id, grade_level, strand, balance FROM students")
-    students = cursor.fetchall()
-    conn.close()
-    return jsonify(success=True, students=students)
+    cursor = conn.cursor(cursorclass=MySQLdb.cursors.DictCursor)
+
+
+    if school_id:
+        cursor.execute("SELECT student_id, full_name, school_id, grade_level, strand, balance FROM students WHERE school_id=%s", (school_id,))
+        student = cursor.fetchone()
+        conn.close()
+        if student:
+            return jsonify(success=True, student=student)
+        else:
+            return jsonify(success=False, message="Not found")
+    else:
+        cursor.execute("SELECT student_id, full_name, school_id, grade_level, strand, balance FROM students")
+        students = cursor.fetchall()
+        conn.close()
+        return jsonify(success=True, students=students)
 
 
 @app.route("/staff_record_transaction", methods=["POST"])
@@ -1645,7 +2198,7 @@ def staff_record_transaction():
     staff_id = session.get("staff_id")  # logged-in staff
 
     conn = get_connection()
-    cursor = conn.cursor(dictionary=True)
+    cursor = conn.cursor(cursorclass=MySQLdb.cursors.DictCursor)
 
     try:
         # ✅ Case 1: QR Scan (registered student)
@@ -1770,7 +2323,7 @@ def staff_transaction():
     amount = float(request.form["amount"])
 
     conn = get_connection()
-    cursor = conn.cursor()
+    cursor = conn.cursor(cursorclass=MySQLdb.cursors.DictCursor)
 
     # Check balance
     cursor.execute("SELECT balance FROM students WHERE student_id=%s", (student_id,))
@@ -1803,28 +2356,7 @@ def staff_transaction():
 
 
 # ---------------- Manual Input for Unregistered Students ----------------
-@app.route("/staff_unregistered_transaction", methods=["POST"])
-def staff_unregistered_transaction():
-    if "email" not in session or session.get("role") != "staff":
-        return redirect(url_for("signin_staff"))
 
-    customer_name = request.form["customer_name"]
-    amount = float(request.form["amount"])
-    payment_mode = request.form["payment_mode"]  # 'cash' or 'gcash'
-    staff_id = session.get("staff_id")
-
-    conn = get_connection()
-    cursor = conn.cursor()
-
-    cursor.execute("""
-        INSERT INTO unregistered_transactions (customer_name, amount, payment_mode, staff_id, status)
-        VALUES (%s,%s,%s,%s,'completed')
-    """, (customer_name, amount, payment_mode, staff_id))
-
-    conn.commit()
-    conn.close()
-
-    return "Unregistered transaction recorded."
 
 @app.route("/unregistered_transactions")
 def unregistered_transactions():
@@ -1832,7 +2364,7 @@ def unregistered_transactions():
         return redirect(url_for("signin_admin"))
 
     conn = get_connection()
-    cursor = conn.cursor(dictionary=True)
+    cursor = conn.cursor(cursorclass=MySQLdb.cursors.DictCursor)
 
     cursor.execute("""
         SELECT ut.transaction_id, ut.customer_name, ut.amount, ut.payment_mode,
@@ -1849,58 +2381,9 @@ def unregistered_transactions():
 
 
 # ---------------- Real-Time QR Scanning (token lookup) ----------------
-@app.route("/scan_qr", methods=["GET","POST"])
-def scan_qr():
-    if request.method == "GET":
-        return render_template("scan_qr.html")
 
-    if "role" not in session or session["role"] != "staff":
-        return redirect(url_for("signin_staff"))
 
-    token = request.form["student_id"]
-    amount = float(request.form["amount"])
 
-    conn = get_connection()
-    cursor = conn.cursor()
-    cursor.execute("SELECT student_id FROM qr_tokens WHERE token=%s ORDER BY created_at DESC LIMIT 1", (token,))
-    result = cursor.fetchone()
-    conn.close()
-
-    if result:
-        student_id = result[0]
-        session["pending_student"] = student_id
-        session["pending_amount"] = amount
-        return redirect(url_for("confirm_transaction"))
-    else:
-        return "Invalid or expired QR code"
-
-# ---------------- Student Scans Staff QR ----------------
-@app.route("/scan_staff_qr", methods=["POST"])
-def scan_staff_qr():
-    data = request.get_json()
-    staff_qr = data.get("staff_qr")
-    student_id = data.get("student_id")
-    amount = data.get("amount", 0)
-
-    conn = get_connection()
-    cursor = conn.cursor(dictionary=True)
-
-    # Verify staff QR
-    cursor.execute("SELECT staff_id, full_name FROM staff WHERE staff_qr=%s", (staff_qr,))
-    staff = cursor.fetchone()
-
-    if staff:
-        # Record transaction
-        cursor.execute("""
-            INSERT INTO transactions (student_id, staff_id, amount, type, status, created_at)
-            VALUES (%s, %s, %s, 'purchase', 'completed', NOW())
-        """, (student_id, staff["staff_id"], amount))
-        conn.commit()
-        conn.close()
-        return jsonify(success=True, staff_name=staff["full_name"])
-    else:
-        conn.close()
-        return jsonify(success=False, message="Staff QR not recognized")
 
 
 

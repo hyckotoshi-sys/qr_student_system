@@ -1,26 +1,37 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+  <meta charset="UTF-8">
   <title>Enter PIN</title>
-  <style>
-    body { font-family: Arial, sans-serif; background:#f9fafb; display:flex; justify-content:center; align-items:center; height:100vh; }
-    .pin-box { background:#fff; padding:30px; border-radius:8px; box-shadow:0 4px 10px rgba(0,0,0,0.1); width:300px; text-align:center; }
-    input { width:100%; padding:10px; margin:10px 0; border:1px solid #ccc; border-radius:6px; text-align:center; font-size:20px; letter-spacing:10px; }
-    button { width:100%; padding:10px; background:#22c55e; color:#fff; border:none; border-radius:6px; cursor:pointer; }
-    button:hover { background:#16a34a; }
-    a { color:#2563eb; text-decoration:none; }
-  </style>
+  <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body>
-  <div class="pin-box">
-    <h2>Enter Your 4‑Digit PIN</h2>
-    <form method="POST">
-      <input type="password" name="pin" maxlength="4" required placeholder="PIN">
-      <button type="submit">Verify PIN</button>
+<body class="bg-gradient-to-r from-purple-50 to-pink-50 min-h-screen flex items-center justify-center">
+
+  <!-- PIN Card -->
+  <div class="bg-white shadow-xl rounded-xl w-full max-w-md p-8 relative z-10">
+    <!-- Logo watermark (behind form, not blocking clicks) -->
+    <div class="absolute inset-0 opacity-5 bg-center bg-no-repeat pointer-events-none"
+         style="background-image: url('{{ url_for('static', filename='images/bambini_logo.png') }}'); background-size: 250px;">
+    </div>
+
+    <h2 class="text-2xl font-bold text-center text-purple-700 mb-6">🔒 Enter Your 4‑Digit PIN</h2>
+
+    <form method="POST" class="space-y-4 relative z-10">
+      <div>
+        <input type="password" name="pin" maxlength="4" required placeholder="PIN"
+               class="w-full border rounded-lg p-3 text-center text-2xl tracking-widest focus:ring-2 focus:ring-purple-400 focus:outline-none">
+      </div>
+
+      <button type="submit"
+              class="w-full bg-gradient-to-r from-green-500 to-green-600 text-white py-2 rounded-lg shadow-md hover:from-green-600 hover:to-green-700 transition">
+        Verify PIN
+      </button>
     </form>
-    <p style="margin-top:10px;">
-      <a href="{{ url_for('forgot_pin') }}">Forgot PIN?</a>
+
+    <p class="text-center text-sm mt-4">
+      <a href="{{ url_for('forgot_pin') }}" class="text-blue-600 hover:underline">Forgot PIN?</a>
     </p>
   </div>
+
 </body>
 </html>

@@ -1,55 +1,116 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+  <meta charset="UTF-8">
   <title>Staff Sign Up</title>
+  <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body>
-  <h2>Staff Sign Up</h2>
-  <form action="{{ url_for('signup_staff') }}" method="POST">
-    <label for="full_name">Full Name:</label>
-    <input type="text" id="full_name" name="full_name" required><br>
+<body class="bg-gradient-to-r from-purple-50 to-pink-50 min-h-screen flex items-center justify-center">
 
-    <label for="contact_number">Contact Number:</label>
-    <input type="text" id="contact_number" name="contact_number" required><br>
+  <!-- Signup Card -->
+  <div class="bg-white shadow-xl rounded-xl w-full max-w-lg p-8 relative z-10">
+    <!-- Logo watermark -->
+    <div class="absolute inset-0 opacity-5 bg-center bg-no-repeat pointer-events-none"
+         style="background-image: url('{{ url_for('static', filename='images/bambini_logo.png') }}'); background-size: 300px;">
+    </div>
 
-    <label for="email">Email Address:</label>
-    <input type="email" id="email" name="email" required><br>
+    <!-- Logo -->
+    <div class="flex justify-center mb-4">
+      <img src="{{ url_for('static', filename='images/bambini_logo.png') }}" alt="Bambini Logo" class="w-24 rounded-full shadow-md">
+    </div>
 
-    <label for="password">Password:</label>
-    <input type="password" id="password" name="password" required><br>
+    <h2 class="text-2xl font-bold text-center text-purple-700 mb-6">👩‍💼 Staff Sign Up</h2>
 
-    <!-- Security Questions -->
-    <label for="security_q1">Security Question 1:</label>
-    <select id="security_q1" name="security_q1" required>
-      <option value="favorite_food">Favorite food?</option>
-      <option value="birth_city">City of birth?</option>
-      <option value="first_pet">First pet’s name?</option>
-      <option value="nickname">Childhood nickname?</option>
-      <option value="favorite_teacher">Favorite teacher’s name?</option>
-    </select><br>
-    <input type="text" id="security_a1" name="security_a1" required><br>
+    <form action="{{ url_for('signup_staff') }}" method="POST" class="space-y-4 relative z-10">
+      <!-- Full Name -->
+      <div>
+        <label for="full_name" class="block text-sm font-medium text-gray-700">Full Name</label>
+        <input type="text" id="full_name" name="full_name" required
+               class="w-full border rounded-lg p-2 focus:ring-2 focus:ring-purple-400 focus:outline-none">
+      </div>
 
-    <label for="security_q2">Security Question 2:</label>
-    <select id="security_q2" name="security_q2" required>
-      <option value="first_school">First school?</option>
-      <option value="best_friend">Childhood best friend?</option>
-      <option value="dream_job">Dream job as a child?</option>
-      <option value="favorite_subject">Favorite subject?</option>
-      <option value="favorite_movie">Favorite movie?</option>
-    </select><br>
-    <input type="text" id="security_a2" name="security_a2" required><br>
+      <!-- Contact Number -->
+      <div>
+        <label for="contact_number" class="block text-sm font-medium text-gray-700">Contact Number</label>
+        <input type="text" id="contact_number" name="contact_number" required
+               class="w-full border rounded-lg p-2 focus:ring-2 focus:ring-purple-400 focus:outline-none">
+      </div>
 
-    <label for="security_q3">Security Question 3:</label>
-    <select id="security_q3" name="security_q3" required>
-      <option value="favorite_book">Favorite book?</option>
-      <option value="favorite_color">Favorite color?</option>
-      <option value="favorite_song">Favorite song?</option>
-      <option value="first_car">First car model?</option>
-      <option value="hobby">Favorite hobby?</option>
-    </select><br>
-    <input type="text" id="security_a3" name="security_a3" required><br>
+      <!-- Email -->
+      <div>
+        <label for="email" class="block text-sm font-medium text-gray-700">Email Address</label>
+        <input type="email" id="email" name="email" required
+               class="w-full border rounded-lg p-2 focus:ring-2 focus:ring-purple-400 focus:outline-none">
+      </div>
 
-    <button type="submit">Sign Up</button>
-  </form>
+      <!-- Password -->
+      <div>
+        <label for="password" class="block text-sm font-medium text-gray-700">Password</label>
+        <input type="password" id="password" name="password" required
+               class="w-full border rounded-lg p-2 focus:ring-2 focus:ring-purple-400 focus:outline-none">
+        <small class="text-gray-500">Must be at least 8 characters, include uppercase, lowercase, number, and special character.</small>
+      </div>
+
+      <!-- Security Question 1 -->
+      <div>
+        <label for="security_q1" class="block text-sm font-medium text-gray-700">Security Question 1</label>
+        <select id="security_q1" name="security_q1" required
+                class="w-full border rounded-lg p-2 focus:ring-2 focus:ring-purple-400 focus:outline-none">
+          <option value="">Select a question</option>
+          <option value="favorite_food">Favorite food?</option>
+          <option value="birth_city">City of birth?</option>
+          <option value="first_pet">First pet’s name?</option>
+          <option value="nickname">Childhood nickname?</option>
+          <option value="favorite_teacher">Favorite teacher’s name?</option>
+        </select>
+        <input type="text" id="security_a1" name="security_a1" placeholder="Answer" required
+               class="w-full border rounded-lg p-2 mt-2 focus:ring-2 focus:ring-purple-400 focus:outline-none">
+      </div>
+
+      <!-- Security Question 2 -->
+      <div>
+        <label for="security_q2" class="block text-sm font-medium text-gray-700">Security Question 2</label>
+        <select id="security_q2" name="security_q2" required
+                class="w-full border rounded-lg p-2 focus:ring-2 focus:ring-purple-400 focus:outline-none">
+          <option value="">Select a question</option>
+          <option value="first_school">First school?</option>
+          <option value="best_friend">Childhood best friend?</option>
+          <option value="dream_job">Dream job as a child?</option>
+          <option value="favorite_subject">Favorite subject?</option>
+          <option value="favorite_movie">Favorite movie?</option>
+        </select>
+        <input type="text" id="security_a2" name="security_a2" placeholder="Answer" required
+               class="w-full border rounded-lg p-2 mt-2 focus:ring-2 focus:ring-purple-400 focus:outline-none">
+      </div>
+
+      <!-- Security Question 3 -->
+      <div>
+        <label for="security_q3" class="block text-sm font-medium text-gray-700">Security Question 3</label>
+        <select id="security_q3" name="security_q3" required
+                class="w-full border rounded-lg p-2 focus:ring-2 focus:ring-purple-400 focus:outline-none">
+          <option value="">Select a question</option>
+          <option value="favorite_book">Favorite book?</option>
+          <option value="favorite_color">Favorite color?</option>
+          <option value="favorite_song">Favorite song?</option>
+          <option value="first_car">First car model?</option>
+          <option value="hobby">Favorite hobby?</option>
+        </select>
+        <input type="text" id="security_a3" name="security_a3" placeholder="Answer" required
+               class="w-full border rounded-lg p-2 mt-2 focus:ring-2 focus:ring-purple-400 focus:outline-none">
+      </div>
+
+      <!-- Submit -->
+      <button type="submit"
+              class="w-full bg-gradient-to-r from-purple-500 to-pink-500 text-white py-2 rounded-lg shadow-md hover:from-purple-600 hover:to-pink-600 transition">
+        Sign Up
+      </button>
+    </form>
+
+    <!-- Link to Signin -->
+    <p class="text-center text-sm text-gray-600 mt-4">
+      Already have an account?
+      <a href="{{ url_for('signin_staff') }}" class="text-purple-600 hover:underline">Sign in here</a>
+    </p>
+  </div>
 </body>
 </html>

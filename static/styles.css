@@ -1,0 +1,178 @@
+/* =========================
+   Base Styles
+========================= */
+body {
+  font-family: 'Inter', sans-serif;
+  background-color: #f3f4f6; /* gray-100 */
+  margin: 0;
+  color: #374151; /* gray-700 */
+}
+
+h1, h2, h3 {
+  margin: 0;
+  font-weight: bold;
+}
+
+/* =========================
+   Layout
+========================= */
+main {
+  padding: 2rem;
+  flex: 1;
+}
+
+section {
+  margin-bottom: 2rem;
+}
+
+/* =========================
+   Sidebar
+========================= */
+aside {
+  width: 240px;
+  background-color: #1565C0;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+aside h2 {
+  padding: 1.5rem;
+  font-size: 1.25rem;
+}
+
+aside nav {
+  flex: 1;
+  padding: 0 1rem;
+}
+
+aside nav a {
+  display: block;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  color: #fff;
+  text-decoration: none;
+  transition: background 0.2s;
+}
+
+aside nav a:hover {
+  background: rgba(255,255,255,0.1);
+}
+
+aside .logout-link {
+  padding: 1rem;
+  color: #fca5a5;
+  text-decoration: none;
+}
+
+/* =========================
+   Cards
+========================= */
+.card, .bg-white {
+  background: #fff;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.08);
+  border: 1px solid #e5e7eb; /* gray-200 */
+}
+
+.card h3 {
+  margin-bottom: 0.5rem;
+  font-size: 0.875rem;
+  color: #374151;
+}
+
+/* =========================
+   Tables
+========================= */
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+thead tr {
+  background: #f9fafb; /* gray-50 */
+  text-transform: uppercase;
+  font-size: 12px;
+  color: #6b7280; /* gray-500 */
+}
+
+th, td {
+  padding: 12px 20px;
+  border-bottom: 1px solid #f3f4f6;
+  text-align: left;
+}
+
+tbody tr:hover {
+  background: rgba(243,244,246,0.6); /* gray-50/60 */
+  transition: background 0.2s;
+}
+
+/* =========================
+   Buttons
+========================= */
+button {
+  cursor: pointer;
+  border: none;
+  font-size: 12px;
+  font-weight: bold;
+  border-radius: 8px;
+  padding: 6px 12px;
+  transition: background 0.2s, opacity 0.2s;
+}
+
+button:hover {
+  opacity: 0.9;
+}
+
+button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* =========================
+   Utility Colors
+========================= */
+.text-green-600 { color: #16a34a; }
+.text-red-500 { color: #ef4444; }
+.text-blue-600 { color: #2563eb; }
+.text-gray-500 { color: #6b7280; }
+
+.bg-green-100 { background: #dcfce7; }
+.bg-red-100 { background: #fee2e2; }
+.bg-blue-100 { background: #dbeafe; }
+.bg-amber-100 { background: #fef3c7; }
+.bg-purple-100 { background: #f3e8ff; }
+
+/* =========================
+   Responsive Grid
+========================= */
+.grid {
+  display: grid;
+  gap: 1rem;
+}
+
+.grid-cols-1 {
+  grid-template-columns: 1fr;
+}
+
+.sm\:grid-cols-3 {
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+}
+
+.lg\:grid-cols-2 {
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+}
+
+@media (max-width: 768px) {
+  aside {
+    width: 100%;
+    height: auto;
+    flex-direction: row;
+    overflow-x: auto;
+  }
+  main {
+    padding: 1rem;
+  }
+}

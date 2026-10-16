@@ -1,0 +1,68 @@
+<!-- sidebar.html -->
+<style>
+  .sidebar {
+    position: fixed;      /* keeps it pinned */
+    top: 0;
+    left: 0;
+    width: 220px;         /* adjust width */
+    height: 100%;         /* full height */
+    background: #238ec4;  /* dark background */
+    padding-top: 20px;
+    overflow-y: auto;     /* scroll if content exceeds height */
+  }
+
+  .sidebar .logo img {
+    display: block;
+    margin: 0 auto 20px auto;
+    max-width: 150px;
+    height: auto;
+  }
+
+  .sidebar .nav-links {
+    list-style: none;
+    padding: 0;
+  }
+
+  .sidebar .nav-links li {
+    margin: 15px 0;
+  }
+
+  .sidebar .nav-links a {
+    color: #fff;
+    text-decoration: none;
+    font-size: 16px;
+    display: block;
+    padding: 10px 15px;
+    transition: background 0.3s;
+  }
+
+  .sidebar .nav-links a:hover {
+    background-color: #7783b6;
+    border-radius: 4px;
+  }
+
+  .main-content {
+    margin-left: 220px; /* push content to the right */
+    padding: 20px;
+  }
+</style>
+
+<div class="sidebar">
+  <div class="logo">
+    <img src="{{ url_for('static', filename='images/fcd_logo.png') }}" alt="FCD Logo">
+  </div>
+  <ul class="nav-links">
+    {% if session.get('role') == 'student' %}
+      <li><a href="{{ url_for('dashboard_student') }}">Dashboard</a></li>
+      <li><a href="{{ url_for('profile_student') }}">Profile</a></li>
+      <li><a href="{{ url_for('dashboard_transactions') }}">Transaction History</a></li>
+    {% elif session.get('role') == 'staff' %}
+      <li><a href="{{ url_for('dashboard_staff') }}">Dashboard</a></li>
+      <li><a href="{{ url_for('dashboard_transactions') }}">Transaction History</a></li>
+    {% elif session.get('role') == 'admin' %}
+      <li><a href="{{ url_for('dashboard_admin') }}">Dashboard</a></li>
+      <li><a href="{{ url_for('dashboard_transactions') }}">Transaction History</a></li>
+    {% endif %}
+    <li><a href="{{ url_for('logout') }}">Logout</a></li>
+  </ul>
+</div>

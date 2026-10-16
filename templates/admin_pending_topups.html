@@ -1,0 +1,40 @@
+<div class="bg-white p-4 rounded-lg shadow mt-6">
+  <h3 class="text-lg font-semibold mb-2">Pending Top-Ups</h3>
+  <table class="w-full border-collapse border border-gray-300">
+    <thead class="bg-gray-100">
+      <tr>
+        <th class="border p-2">ID</th>
+        <th class="border p-2">Student</th>
+        <th class="border p-2">School ID</th>
+        <th class="border p-2">Amount</th>
+        <th class="border p-2">Payment Mode</th>
+        <th class="border p-2">Reference #</th>
+        <th class="border p-2">Date</th>
+        <th class="border p-2">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for t in pending_topups %}
+      <tr>
+        <td>{{ t.topup_id }}</td>
+        <td>{{ t.full_name }}</td>
+        <td>{{ t.school_id }}</td>
+        <td>₱{{ t.amount }}</td>
+        <td>{{ t.payment_mode }}</td>
+        <td>{{ t.reference_number }}</td>
+        <td>{{ t.created_at }}</td>
+        <td>
+          <form action="{{ url_for('approve_topup', topup_id=t.topup_id) }}" method="POST" style="display:inline;">
+            <button class="bg-green-500 text-white px-2 py-1 rounded">Approve</button>
+          </form>
+          <form action="{{ url_for('reject_topup', topup_id=t.topup_id) }}" method="POST" style="display:inline;">
+            <button class="bg-red-500 text-white px-2 py-1 rounded">Reject</button>
+          </form>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="8" class="text-center">No pending top-ups.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>

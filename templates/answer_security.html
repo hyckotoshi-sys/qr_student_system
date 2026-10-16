@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Answer Security Questions</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f6f9;
+      margin: 0;
+      padding: 0;
+    }
+    .security-container {
+      max-width: 500px;
+      margin: 50px auto;
+      background: #ffffff;
+      padding: 30px;
+      border-radius: 8px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+      text-align: center;
+    }
+    .logo img {
+      width: 120px;
+      margin-bottom: 20px;
+    }
+    h2 {
+      color: #d32f2f;
+      margin-bottom: 20px;
+    }
+    label {
+      display: block;
+      margin-top: 10px;
+      font-weight: bold;
+      color: #333;
+      text-align: left;
+    }
+    input {
+      width: 100%;
+      padding: 8px;
+      margin-top: 5px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    button {
+      margin-top: 20px;
+      width: 100%;
+      padding: 10px;
+      background: #d32f2f;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #b71c1c;
+    }
+  </style>
+</head>
+<body>
+  <div class="security-container">
+    <div class="logo">
+      <img src="{{ url_for('static', filename='images/fcd_logo.png') }}" alt="FCD Logo">
+    </div>
+    <h2>Answer Security Questions</h2>
+    <form action="{{ url_for('verify_security_answers') }}" method="POST">
+      <label>{{ student.security_q1 }}</label>
+      <input type="text" name="security_a1" required>
+
+      <label>{{ student.security_q2 }}</label>
+      <input type="text" name="security_a2" required>
+
+      <label>{{ student.security_q3 }}</label>
+      <input type="text" name="security_a3" required>
+
+      <button type="submit">Verify Answers</button>
+    </form>
+  </div>
+</body>
+</html>

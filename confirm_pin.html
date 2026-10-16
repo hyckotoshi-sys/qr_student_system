@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Confirm PIN</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gradient-to-r from-purple-50 to-pink-50 min-h-screen flex items-center justify-center">
+
+  <!-- PIN Card -->
+  <div class="bg-white shadow-xl rounded-xl w-full max-w-md p-8 relative z-10">
+    <!-- Logo watermark -->
+    <div class="absolute inset-0 opacity-5 bg-center bg-no-repeat pointer-events-none"
+         style="background-image: url('{{ url_for('static', filename='images/fcd_logo.png') }}'); background-size: 250px;">
+    </div>
+
+    <h2 class="text-2xl font-bold text-center text-purple-700 mb-6">🔒 Confirm Your PIN</h2>
+
+    <form action="{{ url_for('confirm_pin') }}" method="POST" class="space-y-4 relative z-10">
+      <div>
+        <label for="pin" class="block text-sm font-medium text-gray-700">Enter 4-Digit PIN</label>
+        <input type="password" id="pin" name="pin" maxlength="4" required
+               autocomplete="current-password"
+               class="w-full border rounded-lg p-3 text-center text-2xl tracking-widest focus:ring-2 focus:ring-purple-400 focus:outline-none">
+      </div>
+
+      <button type="submit"
+              class="w-full bg-gradient-to-r from-purple-500 to-pink-500 text-white py-2 rounded-lg shadow-md hover:from-purple-600 hover:to-pink-600 transition">
+        Confirm PIN
+      </button>
+    </form>
+
+    <!-- Flash messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div class="mt-4">
+          {% for category, message in messages %}
+            <p class="text-center text-sm text-{{ 'red' if category == 'error' else 'green' }}-600">{{ message }}</p>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+  </div>
+
+</body>
+</html>
